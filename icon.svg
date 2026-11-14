@@ -1,0 +1,28 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#9bdcff"/>
+      <stop offset="1" stop-color="#fff2c9"/>
+    </linearGradient>
+  </defs>
+  <rect width="512" height="512" rx="96" fill="url(#bg)"/>
+  <path d="M0 360 Q140 310 280 350 T512 336 V512 H0Z" fill="#8ccf63"/>
+  <!-- 耳朵 -->
+  <path d="M138 196 Q92 120 178 148 Q206 172 196 216 Z" fill="#ffb9ca" stroke="#e58aa1" stroke-width="10" stroke-linejoin="round"/>
+  <path d="M374 196 Q420 120 334 148 Q306 172 316 216 Z" fill="#ffb9ca" stroke="#e58aa1" stroke-width="10" stroke-linejoin="round"/>
+  <!-- 頭 -->
+  <ellipse cx="256" cy="270" rx="138" ry="124" fill="#ffb9ca" stroke="#e58aa1" stroke-width="10"/>
+  <circle cx="162" cy="316" r="22" fill="#ff7f9f" opacity=".6"/>
+  <circle cx="350" cy="316" r="22" fill="#ff7f9f" opacity=".6"/>
+  <!-- 眼睛 -->
+  <ellipse cx="200" cy="252" rx="15" ry="19" fill="#2b1d1a"/><circle cx="195" cy="244" r="6" fill="#fff"/>
+  <ellipse cx="312" cy="252" rx="15" ry="19" fill="#2b1d1a"/><circle cx="307" cy="244" r="6" fill="#fff"/>
+  <!-- 豬鼻 -->
+  <ellipse cx="256" cy="312" rx="56" ry="40" fill="#ff98b2" stroke="#e58aa1" stroke-width="10"/>
+  <ellipse cx="236" cy="312" rx="8" ry="13" fill="#b8576f"/>
+  <ellipse cx="276" cy="312" rx="8" ry="13" fill="#b8576f"/>
+  <!-- 小皇冠 -->
+  <path d="M196 160 L206 100 L234 134 L256 86 L278 134 L306 100 L316 160 Z" fill="#ffd24a" stroke="#c9941a" stroke-width="9" stroke-linejoin="round"/>
+  <rect x="196" y="156" width="120" height="16" rx="5" fill="#ffc22e" stroke="#c9941a" stroke-width="8"/>
+  <circle cx="206" cy="96" r="8" fill="#ff5a7a"/><circle cx="256" cy="82" r="9" fill="#5ac8fa"/><circle cx="306" cy="96" r="8" fill="#7ee081"/>
+</svg>

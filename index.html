@@ -1,0 +1,1255 @@
+<!DOCTYPE html>
+<html lang="zh-Hant-TW">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>豬豬夢工場：30天豬生逆襲</title>
+<meta name="description" content="30 天把一隻普通小粉豬養成傳奇豬豬！繁體中文養成模擬網頁遊戲，支援加到主畫面（PWA），串接 Gemini 產生突發事件與結局報導。">
+<meta name="theme-color" content="#8b5a2b">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="豬豬夢工場">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<style>
+/* ===== 基本設定 ===== */
+:root{
+  --paper:#fff3c4; --ink:#4a3320;
+  --wood1:#9a6a3a; --wood2:#7f5329; --wood-dark:#4b2f14;
+  --green:#6cc04a; --yellow:#f5c542; --red:#e8584f; --blue:#4c9be8; --pink:#f06fa0; --orange:#f08a3c;
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;min-height:100%}
+body{
+  font-family:"Noto Sans TC","PingFang TC","Microsoft JhengHei","Heiti TC",system-ui,sans-serif;
+  color:var(--ink);
+  background-color:#8fd16b;
+  background-image:radial-gradient(#7cc15a 2px,transparent 2.5px);
+  background-size:24px 24px;
+  line-height:1.5;
+}
+button{font-family:inherit}
+#app{max-width:1100px;margin:0 auto;padding:10px;padding-bottom:calc(14px + env(safe-area-inset-bottom))}
+
+/* ===== 木頭質感邊框 ===== */
+.wood{
+  background:repeating-linear-gradient(92deg,#9a6a3a 0 7px,#8a5c2f 7px 9px,#a3733f 9px 17px,#7f5329 17px 18px);
+  border-radius:14px;padding:10px;
+  box-shadow:inset 0 0 0 2px #5e3b1b,inset 0 0 0 4px rgba(255,220,160,.25),0 5px 0 var(--wood-dark),0 8px 14px rgba(0,0,0,.25);
+}
+
+/* ===== 頂部列 ===== */
+.topbar{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:14px;padding:8px 12px}
+.topbar h1{margin:0;font-size:1.25rem;color:#fff3c4;text-shadow:2px 2px 0 #4b2f14;letter-spacing:1px;line-height:1.2}
+.topbar h1 small{display:block;font-size:.72rem;color:#ffe29a;letter-spacing:0;font-weight:600}
+.topbtns{display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end}
+.tbtn{border:2px solid var(--wood-dark);background:#fff3c4;color:var(--ink);border-radius:8px;padding:5px 9px;font-size:.85rem;font-weight:700;cursor:pointer;box-shadow:0 3px 0 var(--wood-dark)}
+.tbtn:active{transform:translateY(2px);box-shadow:0 1px 0 var(--wood-dark)}
+
+/* ===== 版面：左邊豬豬、右邊筆記本 ===== */
+.layout{display:grid;grid-template-columns:minmax(300px,430px) 1fr;gap:16px;align-items:start}
+.stage{position:sticky;top:10px}
+@media (max-width:780px){
+  .layout{grid-template-columns:1fr}
+  .stage{position:static}
+  .topbar h1{font-size:1.05rem}
+}
+
+/* ===== 豬豬舞台 ===== */
+.stage-view{position:relative}
+#pigSvg{width:100%;height:auto;display:block;border:3px solid var(--wood-dark);border-radius:10px;background:#bfe9ff}
+.badges{position:absolute;right:8px;top:8px;display:flex;flex-direction:column;gap:5px;align-items:flex-end;z-index:2}
+.badge{background:#fff8dc;border:3px solid var(--wood-dark);border-radius:8px;padding:1px 9px;font-weight:800;font-size:.95rem;box-shadow:0 3px 0 var(--wood-dark)}
+.bubble{
+  position:absolute;left:10px;top:10px;max-width:56%;z-index:2;
+  background:#fff;border:3px solid var(--wood-dark);border-radius:12px;padding:5px 10px;font-size:.85rem;font-weight:700;
+  box-shadow:0 3px 0 rgba(75,47,20,.6);
+}
+.bubble::after{content:"";position:absolute;left:26px;bottom:-12px;border:6px solid transparent;border-top:9px solid var(--wood-dark)}
+.pigtag{
+  display:inline-block;margin:10px 0 8px;padding:3px 12px;border:3px solid var(--wood-dark);border-radius:6px;
+  background:#ffe29a;font-weight:900;box-shadow:0 3px 0 var(--wood-dark)
+}
+.stats{background:#fff3c4;border:3px solid #5e3b1b;border-radius:10px;padding:8px 10px}
+.stat{display:grid;grid-template-columns:76px 1fr 74px;align-items:center;gap:8px;padding:3px 0}
+.stat .lbl{font-weight:800;font-size:.9rem;white-space:nowrap}
+.bar{position:relative;height:16px;background:#d9c79a;border:2px solid #5e3b1b;border-radius:5px;overflow:hidden}
+.fill{position:relative;height:100%;width:0;transition:width .5s ease,background .3s}
+.fill::after{content:"";position:absolute;inset:0;background:repeating-linear-gradient(90deg,transparent 0 6px,rgba(255,255,255,.28) 6px 8px)}
+.val{position:relative;font-weight:800;font-size:.9rem;text-align:right;white-space:nowrap}
+.delta{position:absolute;right:0;top:-14px;font-size:.85rem;font-weight:900;opacity:0;pointer-events:none}
+.delta.show{animation:deltaPop 1.3s ease-out}
+.delta.up{color:#2f8a1a}.delta.down{color:#c23a30}
+@keyframes deltaPop{0%{opacity:0;transform:translateY(8px)}15%{opacity:1}100%{opacity:0;transform:translateY(-12px)}}
+
+/* ===== 筆記本 ===== */
+.paper{
+  position:relative;padding:14px 14px 16px 50px;border:3px solid #d9bd6a;border-radius:8px;background-color:var(--paper);
+  background-image:
+    repeating-linear-gradient(to bottom,transparent 0,transparent 27px,rgba(110,150,200,.33) 27px,rgba(110,150,200,.33) 28px),
+    linear-gradient(90deg,transparent 36px,rgba(220,90,90,.45) 36px,rgba(220,90,90,.45) 38px,transparent 38px);
+}
+.paper::before{
+  content:"";position:absolute;left:9px;top:12px;bottom:12px;width:16px;
+  background:radial-gradient(circle at 8px 8px,#6b4a2b 0 5px,transparent 5.5px) 0 0/16px 30px repeat-y;
+}
+.paper h2{margin:0 0 10px;font-size:1.15rem}
+.paper h3{margin:16px 0 6px;font-size:1rem}
+.hint{font-size:.8rem;color:#7a6040;margin:2px 0 10px}
+
+.actions{display:grid;grid-template-columns:repeat(2,1fr);gap:10px}
+.act{
+  text-align:left;padding:9px 10px;border:3px solid var(--wood-dark);border-radius:8px;background:#fffaf0;color:var(--ink);
+  box-shadow:0 4px 0 var(--wood-dark);cursor:pointer;display:flex;flex-direction:column;gap:5px;font-size:1rem;
+  transition:transform .06s,box-shadow .06s,background .15s;
+}
+.act:hover{background:#fff}
+.act:active{transform:translateY(3px);box-shadow:0 1px 0 var(--wood-dark)}
+.act:disabled{opacity:.5;cursor:not-allowed;filter:grayscale(.45)}
+.act .name{font-weight:900}
+.act.danger{border-color:#b3302a;box-shadow:0 4px 0 #b3302a}
+.act .warn{font-size:.74rem;color:#b3302a;font-weight:800}
+.chips{display:flex;flex-wrap:wrap;gap:4px}
+.chip{font-size:.72rem;padding:0 6px;border-radius:10px;border:1px solid;font-weight:800;white-space:nowrap}
+.chip.up{background:#e3f7d8;border-color:#7cbf5a;color:#2f7a1a}
+.chip.down{background:#fde4e1;border-color:#e58a82;color:#a3322a}
+body.busy .act{pointer-events:none;opacity:.6}
+
+.log{list-style:none;margin:0;padding:0;max-height:260px;overflow:auto}
+.log li{padding:3px 0;font-size:.88rem;border-bottom:1px dashed rgba(120,90,50,.3)}
+.log .d{display:inline-block;min-width:3.4em;font-weight:900;color:#a06a2a}
+.log li.ev{color:#7a2f8a}
+.log li.bad{color:#b3302a}
+
+/* ===== 彈窗 ===== */
+.overlay{position:fixed;inset:0;background:rgba(40,25,10,.62);display:flex;align-items:center;justify-content:center;padding:14px;z-index:50;animation:fadeIn .2s}
+@keyframes fadeIn{from{opacity:0}to{opacity:1}}
+.modal{
+  width:min(560px,100%);max-height:92vh;overflow:auto;border-radius:14px;padding:10px;
+  background:repeating-linear-gradient(92deg,#9a6a3a 0 7px,#8a5c2f 7px 9px,#a3733f 9px 17px,#7f5329 17px 18px);
+  box-shadow:inset 0 0 0 2px #5e3b1b,0 8px 0 var(--wood-dark),0 14px 30px rgba(0,0,0,.4);animation:pop .22s ease-out;
+}
+.modal.wide{width:min(760px,100%)}
+@keyframes pop{from{transform:scale(.9);opacity:0}to{transform:scale(1);opacity:1}}
+.modal-inner{background:var(--paper);border:3px solid #d9bd6a;border-radius:8px;padding:14px 16px}
+.modal h2{margin:0 0 8px;font-size:1.25rem;text-align:center}
+.modal .big{font-size:2.6rem;text-align:center;line-height:1.1}
+.modal p{margin:6px 0}
+.modal-btns{display:flex;flex-direction:column;gap:9px;margin-top:12px}
+.modal-btns.row{flex-direction:row;flex-wrap:wrap;justify-content:center}
+.mbtn{
+  border:3px solid var(--wood-dark);border-radius:8px;background:#fffaf0;color:var(--ink);padding:9px 12px;font-size:1rem;font-weight:800;
+  cursor:pointer;box-shadow:0 4px 0 var(--wood-dark);text-align:left
+}
+.mbtn.center{text-align:center}
+.mbtn.primary{background:#ffd95a}
+.mbtn:hover{filter:brightness(1.05)}
+.mbtn:active{transform:translateY(3px);box-shadow:0 1px 0 var(--wood-dark)}
+.spinner{width:38px;height:38px;border:5px solid #e0c080;border-top-color:#8b5a2e;border-radius:50%;animation:spin 1s linear infinite;margin:12px auto}
+@keyframes spin{to{transform:rotate(360deg)}}
+.small{font-size:.8rem;color:#7a6040}
+.tag-ai{display:inline-block;font-size:.7rem;padding:0 7px;border-radius:9px;background:#e7d7ff;color:#5a2d91;font-weight:800;margin-left:6px;vertical-align:middle}
+.tag-local{background:#e0e0e0;color:#555}
+.field{width:100%;padding:8px;border:2px solid #5e3b1b;border-radius:6px;font-size:1rem;background:#fff;margin:6px 0}
+
+/* ===== 報紙 ===== */
+.news{
+  background:#f3e8c9;border:2px solid #3b3025;padding:10px 14px 14px;margin:8px 0;
+  font-family:"Noto Serif TC","Songti TC","PMingLiU","Source Han Serif TC",serif;color:#2b2218;
+  box-shadow:3px 3px 0 rgba(0,0,0,.2);transform:rotate(-.6deg)
+}
+.news .mast{text-align:center;font-size:1.7rem;font-weight:900;letter-spacing:.35em;border-bottom:4px double #3b3025;padding-bottom:4px}
+.news .meta{display:flex;justify-content:space-between;font-size:.72rem;border-bottom:1px solid #3b3025;padding:3px 0;margin-bottom:8px}
+.news .head{font-size:1.55rem;font-weight:900;line-height:1.25;margin:6px 0 2px}
+.news .sub{font-size:.95rem;font-weight:700;margin-bottom:8px;color:#5a4630}
+.news .body{font-size:.92rem;line-height:1.75;text-align:justify}
+.news .body p{margin:0 0 6px;text-indent:2em}
+.news .quote{margin-top:8px;padding:6px 10px;border-left:4px solid #3b3025;font-style:italic;background:rgba(0,0,0,.05)}
+
+/* ===== 圖鑑 ===== */
+.book-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:10px;margin-top:8px}
+.bcard{border:3px solid #5e3b1b;border-radius:8px;background:#fffaf0;padding:8px;text-align:center;font-size:.82rem}
+.bcard .e{font-size:2rem}
+.bcard .t{font-weight:900;font-size:.95rem}
+.bcard.locked{background:#d8cdb0;color:#7a6a4a}
+.bcard.locked .e{filter:grayscale(1) brightness(.5)}
+.stars{color:#e0a000;letter-spacing:1px}
+
+.endpig{width:min(220px,60%);margin:0 auto;display:block}
+.endpig svg{width:100%;height:auto;border:3px solid var(--wood-dark);border-radius:10px;display:block}
+.sumrow{display:flex;flex-wrap:wrap;gap:6px;justify-content:center;margin:8px 0}
+.sumrow span{background:#fff;border:2px solid #5e3b1b;border-radius:8px;padding:1px 8px;font-weight:800;font-size:.85rem}
+
+.toast{position:fixed;left:50%;top:14px;transform:translateX(-50%);background:#4b2f14;color:#fff3c4;padding:8px 16px;border-radius:20px;font-weight:700;z-index:80;box-shadow:0 4px 12px rgba(0,0,0,.35);max-width:90vw;text-align:center}
+
+/* ===== 豬豬動畫 ===== */
+.breathe{transform-box:fill-box;transform-origin:50% 100%;animation:breathe 3.2s ease-in-out infinite}
+@keyframes breathe{0%,100%{transform:scale(1,1)}50%{transform:scale(1.012,1.03)}}
+.eye{transform-box:fill-box;transform-origin:center;animation:blink 4.4s infinite}
+@keyframes blink{0%,91%,100%{transform:scaleY(1)}94%{transform:scaleY(.08)}}
+.heart{animation:floatUp 2.6s ease-in infinite;transform-box:fill-box;transform-origin:center}
+.heart.h2{animation-delay:.9s}.heart.h3{animation-delay:1.7s}
+@keyframes floatUp{0%{transform:translateY(8px) scale(.5);opacity:0}25%{opacity:1}100%{transform:translateY(-34px) scale(1.1);opacity:0}}
+.drop{animation:dropFall 1.8s ease-in infinite;transform-box:fill-box;transform-origin:center}
+.drop.d2{animation-delay:.9s}
+@keyframes dropFall{0%{transform:translateY(-4px);opacity:0}25%{opacity:1}100%{transform:translateY(20px);opacity:0}}
+.twinkle{animation:twinkle 1.6s ease-in-out infinite;transform-box:fill-box;transform-origin:center}
+.twinkle.t2{animation-delay:.6s}
+@keyframes twinkle{0%,100%{transform:scale(.4);opacity:.3}50%{transform:scale(1.2);opacity:1}}
+.cloud{animation:drift 26s linear infinite alternate}
+.cloud.c2{animation-duration:34s}
+@keyframes drift{from{transform:translateX(-14px)}to{transform:translateX(26px)}}
+.pulse{transform-box:fill-box;transform-origin:center;animation:pulse 2.4s ease-in-out infinite}
+@keyframes pulse{0%,100%{transform:scale(.94);opacity:.85}50%{transform:scale(1.04);opacity:1}}
+.skin{fill:var(--skin);stroke:var(--line);stroke-width:3;stroke-linejoin:round}
+.snout{fill:var(--snout);stroke:var(--line);stroke-width:3}
+@media (prefers-reduced-motion:reduce){*{animation:none!important}}
+</style>
+</head>
+<body>
+<div id="app">
+  <header class="topbar wood">
+    <h1>🐷 豬豬夢工場<small>30 天豬生逆襲</small></h1>
+    <div class="topbtns">
+      <button class="tbtn" id="btnInstall" hidden>📲 安裝</button>
+      <button class="tbtn" id="btnBook">📖 結局圖鑑</button>
+      <button class="tbtn" id="btnSettings">⚙️ 設定</button>
+      <button class="tbtn" id="btnRestart">🔄 重來</button>
+    </div>
+  </header>
+
+  <main class="layout">
+    <!-- 左：豬豬立繪與數值 -->
+    <section class="stage wood">
+      <div class="stage-view">
+        <div class="badges">
+          <div class="badge">📅 第 <span id="dayNum">1</span> / 30 天</div>
+          <div class="badge">🪙 <span id="goldNum">100</span> G</div>
+        </div>
+        <div class="bubble" id="bubble">今天要做什麼呢？</div>
+
+        <svg id="pigSvg" viewBox="-10 0 340 340" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="可愛的小粉豬">
+          <defs>
+            <linearGradient id="sky" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#9bdcff"/><stop offset="1" stop-color="#fff2c9"/></linearGradient>
+            <radialGradient id="auraGrad" cx="50%" cy="50%" r="50%"><stop offset="0" stop-color="#fff2a8" stop-opacity=".95"/><stop offset="1" stop-color="#ffd24a" stop-opacity="0"/></radialGradient>
+            <path id="heartPath" d="M0 5 C-8 -1 -8 -9 -3.6 -9 C-1.6 -9 0 -7.5 0 -6 C0 -7.5 1.6 -9 3.6 -9 C8 -9 8 -1 0 5 Z"/>
+            <path id="starPath" d="M0 -9 L2.2 -2.2 L9 0 L2.2 2.2 L0 9 L-2.2 2.2 L-9 0 L-2.2 -2.2 Z"/>
+          </defs>
+
+          <!-- 牧場背景 -->
+          <rect x="-10" width="340" height="340" fill="url(#sky)"/>
+          <circle cx="268" cy="104" r="30" fill="#ffd95a" opacity=".28"/>
+          <circle cx="268" cy="104" r="21" fill="#ffd95a"/>
+          <g class="cloud c1"><ellipse cx="70" cy="86" rx="28" ry="11" fill="#fff"/><ellipse cx="92" cy="80" rx="19" ry="10" fill="#fff"/><ellipse cx="52" cy="82" rx="15" ry="8" fill="#fff"/></g>
+          <g class="cloud c2"><ellipse cx="200" cy="64" rx="24" ry="9" fill="#fff" opacity=".9"/><ellipse cx="218" cy="59" rx="16" ry="8" fill="#fff" opacity=".9"/></g>
+          <path d="M-10 244 Q80 200 170 236 T330 224 V340 H-10Z" fill="#b6e48a"/>
+          <path d="M-10 274 Q120 248 330 270 V340 H-10Z" fill="#8ccf63"/>
+          <!-- 小穀倉 -->
+          <g transform="translate(14 196)">
+            <rect width="54" height="46" fill="#d9534f" stroke="#8c2f2b" stroke-width="2.5"/>
+            <path d="M-5 3 L27 -24 L59 3Z" fill="#b3413d" stroke="#8c2f2b" stroke-width="2.5" stroke-linejoin="round"/>
+            <rect x="18" y="20" width="18" height="26" fill="#fff1d0" stroke="#8c2f2b" stroke-width="2.5"/>
+            <path d="M18 20 L36 46 M36 20 L18 46" stroke="#8c2f2b" stroke-width="2"/>
+          </g>
+          <!-- 籬笆 -->
+          <g fill="#cf9a62" stroke="#8a5a2e" stroke-width="2">
+            <rect x="238" y="246" width="10" height="38" rx="2"/><rect x="262" y="246" width="10" height="38" rx="2"/>
+            <rect x="286" y="246" width="10" height="38" rx="2"/><rect x="232" y="256" width="98" height="7" rx="2"/>
+            <rect x="232" y="270" width="98" height="7" rx="2"/>
+          </g>
+          <ellipse cx="160" cy="300" rx="94" ry="13" fill="#7a5230" opacity=".35"/>
+
+          <!-- 傳說光環 -->
+          <g id="aura" style="display:none"><circle class="pulse" cx="160" cy="190" r="150" fill="url(#auraGrad)"/></g>
+
+          <!-- 豬豬本體（依體重縮放） -->
+          <g id="pigScale">
+            <g class="breathe">
+              <g id="pig">
+                <!-- 披風（傳說等級才有） -->
+                <path id="cape" style="display:none" d="M98 170 Q56 250 90 300 L230 300 Q264 250 222 170 Z" fill="#d9444f" stroke="#9a2a33" stroke-width="3" stroke-linejoin="round"/>
+                <!-- 尾巴 -->
+                <path d="M236 242 q24 -8 11 -26 q-11 -13 -22 3" fill="none" stroke="var(--line)" stroke-width="5" stroke-linecap="round"/>
+                <!-- 腿 -->
+                <rect class="skin" x="112" y="262" width="34" height="30" rx="13"/>
+                <rect class="skin" x="174" y="262" width="34" height="30" rx="13"/>
+                <rect x="112" y="282" width="34" height="10" rx="5" fill="var(--hoof)"/>
+                <rect x="174" y="282" width="34" height="10" rx="5" fill="var(--hoof)"/>
+                <!-- 身體 -->
+                <ellipse class="skin" cx="160" cy="224" rx="80" ry="62"/>
+                <ellipse cx="160" cy="238" rx="52" ry="36" fill="var(--belly)"/>
+                <!-- 手臂 -->
+                <ellipse class="skin" cx="86" cy="220" rx="14" ry="22" transform="rotate(18 86 220)"/>
+                <ellipse class="skin" cx="234" cy="220" rx="14" ry="22" transform="rotate(-18 234 220)"/>
+                <!-- 耳朵 -->
+                <g id="earL">
+                  <path class="skin" d="M100 96 Q68 54 116 70 Q131 85 124 106 Z"/>
+                  <path d="M104 92 Q86 68 114 76 Q120 86 116 98 Z" fill="var(--inner)"/>
+                </g>
+                <g id="earR">
+                  <path class="skin" d="M220 96 Q252 54 204 70 Q189 85 196 106 Z"/>
+                  <path d="M216 92 Q234 68 206 76 Q200 86 204 98 Z" fill="var(--inner)"/>
+                </g>
+                <!-- 頭 -->
+                <ellipse class="skin" cx="160" cy="135" rx="72" ry="64"/>
+                <!-- 臉頰 -->
+                <g id="cheeks" fill="var(--cheek)" opacity=".6"><circle cx="103" cy="152" r="11"/><circle cx="217" cy="152" r="11"/></g>
+                <!-- 眼睛 -->
+                <g class="eye"><ellipse cx="127" cy="128" rx="8" ry="10" fill="#2b1d1a"/><circle cx="124" cy="123" r="3.2" fill="#fff"/><circle cx="130" cy="132" r="1.5" fill="#fff"/></g>
+                <g class="eye"><ellipse cx="193" cy="128" rx="8" ry="10" fill="#2b1d1a"/><circle cx="190" cy="123" r="3.2" fill="#fff"/><circle cx="196" cy="132" r="1.5" fill="#fff"/></g>
+                <!-- 疲勞/生病的半闔眼 -->
+                <g id="lids" style="display:none">
+                  <rect x="116" y="116" width="22" height="11" fill="var(--skin)"/><line x1="115" y1="127" x2="139" y2="127" stroke="#7a3042" stroke-width="2.6" stroke-linecap="round"/>
+                  <rect x="182" y="116" width="22" height="11" fill="var(--skin)"/><line x1="181" y1="127" x2="205" y2="127" stroke="#7a3042" stroke-width="2.6" stroke-linecap="round"/>
+                </g>
+                <!-- 豬鼻 -->
+                <ellipse class="snout" cx="160" cy="152" rx="30" ry="21"/>
+                <ellipse cx="150" cy="152" rx="4" ry="6.5" fill="var(--nostril)"/><ellipse cx="170" cy="152" rx="4" ry="6.5" fill="var(--nostril)"/>
+                <!-- 嘴巴 -->
+                <path id="mouth" d="M146 180 Q160 192 174 180" fill="none" stroke="#7a3042" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+                <path id="tongue" style="display:none" d="M152 190 Q160 202 168 190 Q160 186 152 190Z" fill="#ff8fa6"/>
+                <!-- OK 繃 -->
+                <g id="bandage" style="display:none" transform="rotate(-18 196 100)"><rect x="180" y="93" width="32" height="12" rx="4" fill="#ffe9c4" stroke="#c9a36b" stroke-width="2"/><rect x="190" y="93" width="12" height="12" fill="#f3c98f" opacity=".75"/></g>
+
+                <!-- ===== 配件 ===== -->
+                <g id="bowtie" style="display:none">
+                  <path d="M160 204 L134 190 Q130 204 134 218 Z" fill="#ff5c8a" stroke="#c93a66" stroke-width="3" stroke-linejoin="round"/>
+                  <path d="M160 204 L186 190 Q190 204 186 218 Z" fill="#ff5c8a" stroke="#c93a66" stroke-width="3" stroke-linejoin="round"/>
+                  <circle cx="160" cy="204" r="6.5" fill="#ff8fb0" stroke="#c93a66" stroke-width="3"/>
+                </g>
+                <g id="glasses" style="display:none" fill="rgba(200,240,255,.35)" stroke="#33363d" stroke-width="3.2">
+                  <circle cx="127" cy="128" r="17"/><circle cx="193" cy="128" r="17"/>
+                  <path d="M144 126 Q160 118 176 126" fill="none"/>
+                  <path d="M110 124 L94 118 M210 124 L226 118" fill="none" stroke-linecap="round"/>
+                </g>
+                <g id="shades" style="display:none">
+                  <rect x="106" y="114" width="42" height="28" rx="11" fill="#1f2026" stroke="#000" stroke-width="2"/>
+                  <rect x="172" y="114" width="42" height="28" rx="11" fill="#1f2026" stroke="#000" stroke-width="2"/>
+                  <path d="M148 124 Q160 119 172 124" fill="none" stroke="#000" stroke-width="3.4"/>
+                  <path d="M106 122 L94 118 M214 122 L226 118" fill="none" stroke="#000" stroke-width="3" stroke-linecap="round"/>
+                  <path d="M113 121 L121 121 M179 121 L187 121" stroke="#fff" stroke-width="2.4" stroke-linecap="round" opacity=".7"/>
+                </g>
+                <g id="mortar" style="display:none">
+                  <path d="M132 76 L132 93 Q160 104 188 93 L188 76 Z" fill="#3d3d4d" stroke="#1d1d27" stroke-width="3" stroke-linejoin="round"/>
+                  <path d="M102 68 L160 44 L218 68 L160 90 Z" fill="#2f2f3a" stroke="#1d1d27" stroke-width="3" stroke-linejoin="round"/>
+                  <circle cx="160" cy="67" r="4.5" fill="#ffd24a"/>
+                  <path d="M160 67 L208 72 L208 96" fill="none" stroke="#ffd24a" stroke-width="3" stroke-linecap="round"/>
+                  <rect x="203" y="94" width="10" height="14" rx="3" fill="#ffd24a" stroke="#c9941a" stroke-width="2"/>
+                </g>
+                <g id="helmet" style="display:none">
+                  <path d="M96 106 Q94 50 160 48 Q226 50 224 106 L204 106 Q200 86 160 86 Q120 86 116 106 Z" fill="#c3ccd6" stroke="#5f6a76" stroke-width="3.2" stroke-linejoin="round"/>
+                  <path d="M98 100 Q160 78 222 100 L222 110 Q160 90 98 110 Z" fill="#8e99a6" stroke="#5f6a76" stroke-width="2.6" stroke-linejoin="round"/>
+                  <rect x="156" y="86" width="8" height="30" rx="3" fill="#8e99a6" stroke="#5f6a76" stroke-width="2.4"/>
+                  <path d="M160 49 Q146 26 178 24 Q172 38 168 51 Z" fill="#e04a4a" stroke="#9a2a2a" stroke-width="2.4" stroke-linejoin="round"/>
+                  <path d="M118 74 Q134 62 148 60" fill="none" stroke="#fff" stroke-width="3.4" stroke-linecap="round" opacity=".7"/>
+                </g>
+                <g id="crown" style="display:none">
+                  <path d="M116 84 L124 46 L144 68 L160 38 L176 68 L196 46 L204 84 Z" fill="#ffd24a" stroke="#c9941a" stroke-width="3.2" stroke-linejoin="round"/>
+                  <rect x="116" y="82" width="88" height="10" rx="3" fill="#ffc22e" stroke="#c9941a" stroke-width="3"/>
+                  <circle cx="124" cy="44" r="4.6" fill="#ff5a7a"/><circle cx="160" cy="36" r="5.2" fill="#5ac8fa"/><circle cx="196" cy="44" r="4.6" fill="#7ee081"/>
+                </g>
+
+                <!-- ===== 表情特效 ===== -->
+                <g id="hearts" style="display:none">
+                  <g transform="translate(228 92) scale(1.5)"><use class="heart h1" href="#heartPath" fill="#ff4f7b"/></g>
+                  <g transform="translate(94 84) scale(1.2)"><use class="heart h2" href="#heartPath" fill="#ff6f95"/></g>
+                  <g transform="translate(160 40) scale(1)"><use class="heart h3" href="#heartPath" fill="#ff8fb0"/></g>
+                </g>
+                <g id="sweat" style="display:none">
+                  <path class="drop d1" transform="translate(226 104)" d="M0 -10 C6 0 8 6 0 10 C-8 6 -6 0 0 -10Z" fill="#8fd4ff" stroke="#4aa0d8" stroke-width="1.8"/>
+                  <path class="drop d2" transform="translate(96 112)" d="M0 -10 C6 0 8 6 0 10 C-8 6 -6 0 0 -10Z" fill="#8fd4ff" stroke="#4aa0d8" stroke-width="1.8"/>
+                </g>
+                <g id="sparkles" style="display:none">
+                  <use class="twinkle" href="#starPath" transform="translate(236 118)" fill="#fff7a0" stroke="#f0c040" stroke-width="1.4"/>
+                  <use class="twinkle t2" href="#starPath" transform="translate(86 108) scale(.8)" fill="#fff7a0" stroke="#f0c040" stroke-width="1.4"/>
+                </g>
+              </g>
+            </g>
+          </g>
+
+          <!-- 木劍（手持，不跟著變胖變形） -->
+          <g id="sword" style="display:none">
+            <g id="swordTilt" transform="translate(252 214) rotate(22)">
+              <rect x="-5" y="-80" width="10" height="72" rx="4" fill="#d9a066" stroke="#8a5a2e" stroke-width="2.6"/>
+              <path d="M-5 -80 L0 -95 L5 -80 Z" fill="#d9a066" stroke="#8a5a2e" stroke-width="2.6" stroke-linejoin="round"/>
+              <path d="M-1.5 -74 L-1.5 -16" stroke="#f3cd9a" stroke-width="2.2" stroke-linecap="round"/>
+              <rect x="-15" y="-8" width="30" height="7" rx="3" fill="#8a5a2e"/>
+              <rect x="-3.5" y="-1" width="7" height="22" rx="3" fill="#6b4423"/>
+              <circle cx="0" cy="23" r="4.6" fill="#8a5a2e"/>
+              <circle class="skin" cx="0" cy="8" r="9"/>
+            </g>
+          </g>
+        </svg>
+      </div>
+
+      <div class="pigtag" id="pigTitle">平凡小粉豬</div>
+
+      <div class="stats" id="stats"></div>
+    </section>
+
+    <!-- 右：筆記本（行程與日記） -->
+    <section class="notebook wood">
+      <div class="paper">
+        <h2>📝 今天要做什麼？</h2>
+        <p class="hint">每天只能安排 1 個主要行動。體力太低時，效果會打折；體力歸零會昏倒住院！</p>
+        <div class="actions" id="actions"></div>
+        <h3>📒 豬豬日記</h3>
+        <ul class="log" id="log"></ul>
+      </div>
+    </section>
+  </main>
+</div>
+
+<script>
+'use strict';
+/* =====================================================================
+ *  豬豬夢工場：30天豬生逆襲
+ *  - 純前端單檔遊戲（HTML / CSS / SVG / JS），可安裝為 PWA
+ *  - 突發事件與結局報導：呼叫 Gemini（gemini-2.5-flash），失敗時自動改用內建內容
+ * ===================================================================== */
+
+// ===== LOGIC START =====（下面是不碰 DOM 的純邏輯，方便測試）
+const TOTAL_DAYS = 30;
+const MODEL = 'gemini-2.5-flash';
+const SAVE_KEY = 'pdf_save_v1';
+const BOOK_KEY = 'pdf_endings_v1';
+const API_KEY_STORE = 'pdf_gemini_key';
+
+// 各數值的上下限
+const OMNI_MIN = 70;   // 三項能力都達此值＝傳說級全能豬（外觀變傳說＋隱藏結局）
+const KEYS = ['stamina', 'int', 'str', 'cha', 'weight', 'gold'];
+const LIMITS = { stamina: [0, 100], int: [0, 100], str: [0, 100], cha: [0, 100], weight: [10, 200], gold: [0, 99999] };
+const LABEL = { stamina: '體力', int: '智慧', str: '力量', cha: '魅力', weight: '體重', gold: '豬豬幣' };
+const UNIT = { stamina: '', int: '', str: '', cha: '', weight: 'kg', gold: 'G' };
+
+const clamp = (v, a, b) => Math.min(b, Math.max(a, v));
+const rand = (a, b) => Math.floor(Math.random() * (b - a + 1)) + a;
+const pick = arr => arr[Math.floor(Math.random() * arr.length)];
+
+// 六個每日行程（main = 主要成長的數值，range = 成長範圍）
+const ACTIONS = [
+  { id: 'library', emoji: '📚', name: '豬豬圖書館', main: 'int', range: [6, 10], delta: { stamina: -15, gold: -10 } },
+  { id: 'gym',     emoji: '🏋️', name: '泥巴健身房', main: 'str', range: [6, 10], delta: { stamina: -20, weight: -2 } },
+  { id: 'charm',   emoji: '💃', name: '儀態訓練課', main: 'cha', range: [6, 10], delta: { stamina: -15, gold: -15 } },
+  { id: 'feast',   emoji: '🍔', name: '豪華松露大餐', delta: { stamina: 40, weight: 5, gold: -25 } },
+  { id: 'work',    emoji: '🧹', name: '牧場打工', delta: { gold: 40, stamina: -20, cha: -2 } },
+  { id: 'sleep',   emoji: '💤', name: '睡大覺休息', delta: { stamina: 50, weight: 1 } },
+];
+
+const FLAVOR = {
+  library: ['豬豬抱著厚厚的書啃了一整天，腦袋鼓鼓的。', '在圖書館發現一本《泥巴與數學》，看得入迷。', '一邊翻書一邊流口水，居然還記住了！'],
+  gym: ['泥巴槓鈴舉起來！肌肉在哭也在笑。', '在泥巴裡推了一百下，渾身都是勁。', '教練喊「再一下！」然後自己先喘了。'],
+  charm: ['頭頂書本走直線，優雅度提升中～', '學會了完美的轉圈圈與眨眼。', '對著鏡子練習微笑，連自己都被迷倒。'],
+  feast: ['松露大餐太香了，吃到肚子圓滾滾！', '一口松露一口幸福，罪惡感先放一邊。', '盤子舔得比洗過還乾淨。'],
+  work: ['在牧場搬了一整天乾草，累但荷包鼓了。', '幫母牛遞了一整天水桶，賺到工錢。', '滿身乾草，魅力掉了點，但錢是真的。'],
+  sleep: ['呼嚕嚕～睡得像一顆球。', '夢到自己變成傳奇豬，嘴角還在笑。', '睡飽飽，精神全回來了。'],
+};
+
+// 多重結局（陣列順序 = 判定優先順序，第一個符合的就是結局）
+const ENDINGS = [
+  { id: 'omni', emoji: '🌟', title: '傳說中的全能豬', stars: 3, hidden: true,
+    hint: '智慧、力量、魅力三項都達 70 以上',
+    test: s => Math.min(s.int, s.str, s.cha) >= OMNI_MIN,
+    headline: '「全能豬」橫空出世　全牧場跪著喊偶像', quote: '我只是比較努力，不是比較神。',
+    story: '你既會解微積分，又能徒手劈木頭，還順便把整個牧場的小雞都迷倒。長老們決定把牧場改名為「豬豬王國」，你一邊啃蘋果一邊說：「低調，低調。」' },
+  { id: 'president', emoji: '🎩', title: '豬豬大總統', stars: 3,
+    hint: '智慧、魅力都達 60 以上，且豬豬幣至少 80',
+    test: s => s.int >= 60 && s.cha >= 60 && s.gold >= 80,
+    headline: '豬豬大總統就職　首道命令竟是「加菜」', quote: '我的政見只有一個：每天都要吃得飽！',
+    story: '憑著聰明的腦袋與迷人的演說，你高票當選第一任豬豬大總統。就職典禮上，你宣布國定假日增加到每週五天，全國豬民當場落淚鼓掌。' },
+  { id: 'idol', emoji: '🎤', title: '銀河偶像豬', stars: 3,
+    hint: '魅力 70 以上，體重 60kg 以下',
+    test: s => s.cha >= 70 && s.weight <= 60,
+    headline: '銀河偶像豬巡演破億人次　螢光棒庫存全宇宙告罄', quote: '大家的愛，我都收到了～哼哼！',
+    story: '你的歌聲從牧場傳到了銀河系，外星粉絲開著飛碟來應援。你在舞台上轉圈圈、比愛心，連黑洞都想拿來當你的背景。' },
+  { id: 'lightning', emoji: '⚡', title: '閃電賽跑豬', stars: 2,
+    hint: '體重降到 20kg 以下，力量 30 以上（瘦到極致）',
+    test: s => s.weight <= 20 && s.str >= 30,
+    headline: '閃電賽跑豬刷新紀錄　目擊者：「只看到一道粉紅色殘影」', quote: '我跑太快，連影子都追不上我。',
+    story: '瘦身加上鍛鍊，你變成了一道粉紅色閃電。田徑場的計時器因為跟不上你的速度，當場宣告罷工。' },
+  { id: 'knight', emoji: '🐉', title: '傳奇屠龍騎士豬', stars: 3,
+    hint: '力量 70 以上，體重在 21～75kg 之間',
+    test: s => s.str >= 70 && s.weight <= 75,
+    headline: '屠龍騎士豬凱旋　巨龍：「我只是想借個火」', quote: '其實那隻龍人很好，我們現在是球友。',
+    story: '你扛著木劍殺進龍穴，和巨龍大戰三百回合，最後兩邊累癱在地上一起看星星。傳說就這樣誕生了，只是細節被吟遊詩人誇大了一點點。' },
+  { id: 'nobel', emoji: '🔬', title: '諾貝爾豬博士', stars: 2,
+    hint: '智慧 70 以上',
+    test: s => s.int >= 70,
+    headline: '諾貝爾獎頒給豬博士　發明「永不冷掉的鹹酥雞」', quote: '科學的盡頭，是好吃。',
+    story: '你的腦袋裡裝著整座圖書館，還發明了讓午餐永遠保溫的魔法鍋。評審團邊吃邊投票，全票通過。' },
+  { id: 'sumo', emoji: '🥋', title: '橫綱相撲豬', stars: 2,
+    hint: '力量 40 以上，體重 60kg 以上',
+    test: s => s.str >= 40 && s.weight >= 60,
+    headline: '橫綱豬一屁股坐贏冠軍　對手：「我被壓扁了」', quote: '體重是我的武器，也是我的溫柔。',
+    story: '你用壯碩的體格與扎實的肌肉稱霸土俵，每次入場地面都會抖三下。粉絲說，你的屁股比任何必殺技都有說服力。' },
+  { id: 'chef', emoji: '👨‍🍳', title: '米其林三星主廚豬', stars: 2,
+    hint: '體重 55kg 以上，且智慧或魅力 35 以上',
+    test: s => s.weight >= 55 && (s.int >= 35 || s.cha >= 35),
+    headline: '米其林三星主廚豬開店　排隊人龍繞牧場三圈', quote: '好吃的秘訣？先自己吃三碗。',
+    story: '你把松露、熱情和一點點泥土香燉進同一鍋湯，竟成了全國最搶手的料理。評審吃完眼眶泛淚，說這是「家的味道」。' },
+  { id: 'tycoon', emoji: '💰', title: '豬豬首富', stars: 2,
+    hint: '豬豬幣 350 以上',
+    test: s => s.gold >= 350,
+    headline: '豬豬首富誕生　金幣多到拿來當枕頭', quote: '錢不是萬能，但可以買很多松露。',
+    story: '你把每一枚豬豬幣都存得好好的，30 天後荷包滿到快爆炸。銀行行員看到你都立正站好，還請你坐上最軟的那張沙發。' },
+  { id: 'noble', emoji: '👑', title: '優雅貴族豬', stars: 2,
+    hint: '魅力 50 以上，豬豬幣 200 以上',
+    test: s => s.cha >= 50 && s.gold >= 200,
+    headline: '優雅貴族豬舉辦茶會　全場小指翹得比天高', quote: '請用茶，不過別吃我的杯子。',
+    story: '你舉止優雅、口袋又夠深，鄰近牧場的豬都搶著收你的茶會邀請函。連最挑剔的老鵝都忍不住說：「哎呀，真有品味。」' },
+  { id: 'broke', emoji: '🥲', title: '窮得很快樂的流浪豬藝術家', stars: 1,
+    hint: '最後豬豬幣只剩 10 以下',
+    test: s => s.gold <= 10,
+    headline: '流浪豬藝術家街頭開唱　帽子裡只有一顆鈕扣', quote: '錢包空空，心裡滿滿。',
+    story: '你的豬豬幣花光了，但沒關係，你用快樂換來了滿滿的故事。路人投進帽子的，是一顆鈕扣和一個大大的微笑。' },
+  { id: 'couch', emoji: '🛋️', title: '躺平沙發馬鈴薯豬', stars: 1,
+    hint: '三項能力都低於 35，體重 45kg 以上',
+    test: s => s.int < 35 && s.str < 35 && s.cha < 35 && s.weight >= 45,
+    headline: '沙發馬鈴薯豬宣布「今年都不起床」　鄰居：「他其實很快樂」', quote: '人生的意義就是……再睡五分鐘。',
+    story: '你把沙發睡成了自己的形狀，遙控器就是你的權杖。雖然沒有什麼成就，但你笑得比誰都開心。' },
+  { id: 'hermit', emoji: '🍃', title: '山林隱士豬', stars: 1,
+    hint: '三項能力都低於 35，體重 45kg 以下',
+    test: s => s.int < 35 && s.str < 35 && s.cha < 35,
+    headline: '山林隱士豬歸隱　小鳥與松鼠都來串門子', quote: '我不是躲起來，我是在發呆。',
+    story: '你選擇遠離塵囂，每天看雲、數樹葉，自在得像一陣風。山裡的小動物都說，你是最好的聊天對象。' },
+  { id: 'teacher', emoji: '🍎', title: '豬豬小學名師', stars: 1,
+    hint: '智慧 40 以上，且為三項能力中最高',
+    test: s => s.int >= 40 && s.int >= s.str && s.int >= s.cha,
+    headline: '名師豬獲頒「年度最佳老師」　學生：「他的點心最好吃」', quote: '不會的題目，我們一起吃飽再想。',
+    story: '你把學到的知識教給小豬們，教室永遠充滿笑聲與餅乾香。畢業典禮那天，全班小豬一起把你拋向空中。' },
+  { id: 'guard', emoji: '🛡️', title: '牧場金牌保鑣豬', stars: 1,
+    hint: '力量 40 以上，且高過魅力',
+    test: s => s.str >= 40 && s.str >= s.cha,
+    headline: '金牌保鑣豬守護牧場　野狼聞風喪膽', quote: '有我在，沒有人可以偷吃飼料。',
+    story: '你的肌肉成了牧場最可靠的圍牆。夜裡野狼探頭一看，被你的背影嚇得連夜搬家。' },
+  { id: 'influencer', emoji: '📱', title: '人氣網紅豬', stars: 1,
+    hint: '魅力 40 以上',
+    test: s => s.cha >= 40,
+    headline: '人氣網紅豬粉絲破萬　一支「轉圈圈」影片爆紅', quote: '記得按讚、訂閱、再來一份松露！',
+    story: '你的一舉一動都被拍成短影音，轉圈圈的片段更被全牧場瘋傳。走在路上都有小雞跑來要簽名。' },
+  { id: 'default', emoji: '🌾', title: '平凡幸福小豬', stars: 1,
+    hint: '不上不下，過著剛剛好的日子',
+    test: () => true,
+    headline: '平凡小豬過著幸福日常　鄰居：「看到他就覺得安心」', quote: '今天的太陽很溫暖，真好。',
+    story: '你沒有成為傳奇，卻把每一天都過得踏實又開心。傍晚坐在籬笆邊看夕陽，你覺得，這樣就很好了。' },
+];
+function pickEnding(s) { return ENDINGS.find(e => e.test(s)); }
+
+// 把數值變化套進狀態並做上下限控制，回傳「實際」變動量
+function applyDelta(s, d) {
+  const real = {};
+  for (const k of KEYS) {
+    if (!d[k]) continue;
+    const before = s[k];
+    s[k] = clamp(before + d[k], LIMITS[k][0], LIMITS[k][1]);
+    real[k] = s[k] - before;
+  }
+  return real;
+}
+
+function newState() {
+  return {
+    v: 1, day: 1, stamina: 100, int: 10, str: 10, cha: 10, weight: 30, gold: 100,
+    sickDays: 0, nextEventDay: rand(3, 4), hit: {}, eventTitles: [], log: [],
+    pendingEvent: null, ended: false, endingId: null, news: null, hospitalCount: 0, aiEvents: 0,
+  };
+}
+
+// 檢查這一步能不能做：金幣是否足夠
+function canAfford(s, a) { return s.gold + (a.delta.gold || 0) >= 0; }
+// 做了之後體力會不會歸零（歸零會昏倒）
+function willCollapse(s, a) { return s.stamina + (a.delta.stamina || 0) <= 0; }
+
+// 執行行動（純邏輯）：體力偏低或病後虛弱時，成長打七折
+function runAction(s, a) {
+  const d = Object.assign({}, a.delta);
+  let weak = false;
+  if (a.main) {
+    let g = rand(a.range[0], a.range[1]);
+    if (s.stamina < 25 || s.sickDays > 0) { g = Math.max(1, Math.round(g * 0.7)); weak = true; }
+    d[a.main] = (d[a.main] || 0) + g;
+  }
+  return { real: applyDelta(s, d), weak };
+}
+
+// 昏倒住院：扣醫藥費、恢復體力、病後虛弱
+function hospitalize(s) {
+  const fee = Math.min(s.gold, 40);
+  s.gold -= fee;
+  s.stamina = 60;
+  s.sickDays = 1;
+  s.hospitalCount++;
+  return { fee };
+}
+
+// 事件觸發判定：門檻事件（每個只觸發一次）或定期事件
+const THRESHOLDS = [
+  ['int40', s => s.int >= 40, 'int', '智慧突破 40，成了牧場的小天才'],
+  ['int70', s => s.int >= 70, 'int', '智慧突破 70，名聲傳遍各個牧場'],
+  ['str40', s => s.str >= 40, 'str', '力量突破 40，肌肉開始有存在感'],
+  ['str70', s => s.str >= 70, 'str', '力量突破 70，已是牧場最強壯的豬'],
+  ['cha40', s => s.cha >= 40, 'cha', '魅力突破 40，走到哪都有人回頭'],
+  ['cha70', s => s.cha >= 70, 'cha', '魅力突破 70，閃閃發光的萬人迷'],
+  ['fat70', s => s.weight >= 70, 'weight', '體重突破 70kg，圓滾滾的身形引人注目'],
+  ['fat100', s => s.weight >= 100, 'weight', '體重突破 100kg，成了巨無霸豬'],
+  ['thin20', s => s.weight <= 20, 'weight', '體重降到 20kg 以下，瘦得像一道粉紅色閃電'],
+  ['rich300', s => s.gold >= 300, 'gold', '豬豬幣突破 300，小富豬一枚'],
+  ['broke', s => s.gold <= 0 && s.day >= 5, 'gold', '豬豬幣見底，口袋比臉還乾淨'],
+];
+function checkEventTrigger(s) {
+  if (s.day < 2 || s.day > TOTAL_DAYS) return null;
+  let found = null;
+  for (const [key, cond, tag, reason] of THRESHOLDS) {
+    if (cond(s) && !s.hit[key]) {
+      s.hit[key] = true;               // 同時達成的門檻一起標記，避免連環觸發
+      if (!found) found = { reason, tag };
+    }
+  }
+  if (found) return found;
+  if (s.day >= s.nextEventDay) return { reason: '日常突發事件', tag: null };
+  return null;
+}
+
+// 內建備用事件（沒有 API Key 或 AI 失敗時使用）
+const LOCAL_EVENTS = [
+  { tag: 'gold', title: '路邊的神祕松露攤', emoji: '🍄', story: '路邊有個戴斗篷的老闆在賣松露，香味一路飄進你的鼻子。老闆壓低聲音說：「小豬，要不要來一份？」',
+    choices: [
+      { text: '掏錢買一份，立刻吃光', result: '松露入口即化，你幸福得直打嗝，只是荷包瘦了一圈。', effects: { stamina: 20, weight: 3, gold: -25 } },
+      { text: '幫老闆搬貨換工錢', result: '你扛了一整車箱子，老闆笑得合不攏嘴，還多給了點小費。', effects: { stamina: -15, str: 2, gold: 30 } } ] },
+  { tag: 'cha', title: '迷路的小雞', emoji: '🐥', story: '一隻小雞哭哭啼啼地拉著你的蹄：「我找不到媽媽了……」遠處的雞舍好像有點遠。',
+    choices: [
+      { text: '牽著小雞護送回家', result: '雞媽媽感動得送你一籃蛋，牧場都誇你是暖心豬。', effects: { stamina: -10, cha: 4, gold: 10 } },
+      { text: '假裝沒看到，先去休息', result: '你睡了個好覺，但夢裡一直有小雞在哭，醒來有點心虛。', effects: { stamina: 15, cha: -3 } } ] },
+  { tag: 'str', title: '泥巴摔角大賽', emoji: '🤼', story: '牧場舉辦年度泥巴摔角大賽，裁判一看到你就舉起大喇叭：「那邊那隻小豬，要不要上場？」',
+    choices: [
+      { text: '捲起袖子上場！', result: '你在泥巴裡滾了十圈，雖然全身髒兮兮，但拿到了人生第一面獎牌。', effects: { stamina: -20, str: 6, gold: 20 } },
+      { text: '當啦啦隊幫大家加油', result: '你的加油聲響徹雲霄，大家都說你是最可愛的啦啦隊長。', effects: { stamina: -5, cha: 4, gold: -5 } } ] },
+  { tag: 'int', title: '知識問答擂台', emoji: '🧠', story: '廣場上擺了一個「豬豬知識問答擂台」，獎金豐厚。主持人拿著麥克風問：「有誰敢來挑戰？」',
+    choices: [
+      { text: '舉手挑戰', result: '你一路過關斬將，連最難的「泥巴的化學式」都答對了！', effects: { stamina: -10, int: 5, gold: 25 } },
+      { text: '躲去樹下睡午覺', result: '你睡得好香，只是醒來時擂台已經收攤了。', effects: { stamina: 15 } } ] },
+  { tag: 'cha', title: '牧場偶像海選', emoji: '🎤', story: '牧場舉辦偶像海選，舞台上閃著五彩燈光。評審席上的老牛眼睛一亮：「那隻小豬，上來秀一段！」',
+    choices: [
+      { text: '上台跳一段圈圈舞', result: '你轉得又快又可愛，台下觀眾尖叫連連！', effects: { stamina: -15, cha: 6 } },
+      { text: '當評審，順便吃點心', result: '你邊吃餅乾邊點評，被大家笑稱「最有說服力的評審」。', effects: { weight: 2, gold: 15 } } ] },
+  { tag: 'int', title: '大野狼來敲門', emoji: '🐺', story: '一隻大野狼笑嘻嘻地站在門口：「小豬小豬，把門打開，我只是想借個鹽巴～」',
+    choices: [
+      { text: '用腦袋智取，反過來請他幫忙', result: '你說服野狼幫忙劈柴，還給了他一張「友善鄰居證」，皆大歡喜。', effects: { int: 4, gold: 10 } },
+      { text: '直接用蠻力把他轟出去', result: '你大喝一聲，野狼嚇得連滾帶爬逃走，你也累得喘吁吁。', effects: { stamina: -15, str: 5 } } ] },
+  { tag: null, title: '下雨天的泥巴浴', emoji: '🌧️', story: '下雨了，牧場的泥巴地變成一池池暖暖的泥巴浴，對豬來說簡直是天堂。',
+    choices: [
+      { text: '跳進去泡個痛快', result: '你舒服得瞇起眼睛，渾身的疲勞都被洗掉了，皮膚還滑滑的。', effects: { stamina: 20, cha: 2 } },
+      { text: '待在屋裡讀書', result: '你窩在被子裡讀了一本好書，雖然有點冷，但收穫滿滿。', effects: { stamina: -5, int: 3 } } ] },
+  { tag: 'weight', title: '神祕老人的魔法蘋果', emoji: '🍎', story: '一位白鬍子老人遞給你一顆閃閃發光的蘋果：「吃了它，身體會變得很輕盈喔。」',
+    choices: [
+      { text: '吃掉魔法蘋果', result: '你的身體輕飄飄的，像是卸下了一袋飼料，只是有點頭暈。', effects: { weight: -3, stamina: -10 } },
+      { text: '轉手把蘋果賣掉', result: '收藏家看到蘋果兩眼發光，立刻開出好價錢。', effects: { gold: 40 } } ] },
+  { tag: 'gold', title: '小豬網紅直播', emoji: '📹', story: '一個小鴨子拿著手機跑來：「我在做直播，要不要一起上鏡？觀眾說想看豬豬！」',
+    choices: [
+      { text: '大方開直播', result: '你對著鏡頭轉圈圈，打賞像雪片一樣飛來。', effects: { stamina: -15, cha: 4, gold: 25 } },
+      { text: '婉拒，回家睡覺', result: '你揮揮蹄走了，睡得很沉，隔天精神飽滿。', effects: { stamina: 20 } } ] },
+  { tag: 'int', title: '想拜師的小老鼠', emoji: '🐭', story: '一隻失業的小老鼠跪在你面前：「大師！請收我為徒！我願意端茶倒水！」',
+    choices: [
+      { text: '收為徒弟，傳授知識', result: '你在教學中也學到了新東西，徒弟還送了你一包乾果。', effects: { int: 3, cha: 2, gold: -10 } },
+      { text: '請他幫忙打工賺錢', result: '小老鼠勤勞地搬了一整天貨，賺來的錢你抽了一成。', effects: { gold: 25 } } ] },
+  { tag: 'weight', title: '吃到飽優惠日', emoji: '🍽️', story: '鎮上新開了一間自助餐，今天開幕大優惠，只要一點點錢就能吃到肚子爆炸！',
+    choices: [
+      { text: '放開肚皮大吃特吃', result: '你吃到天昏地暗，肚子圓得像顆球，但元氣滿滿。', effects: { stamina: 30, weight: 6, gold: -10 } },
+      { text: '只買一份外帶，克制一下', result: '你抱著外帶盒慢慢享用，滿足又不失理智。', effects: { stamina: 10, weight: 1, gold: -5 } } ] },
+  { tag: 'gold', title: '路上撿到錢包', emoji: '👛', story: '你在路邊撿到一個鼓鼓的錢包，裡面有不少豬豬幣，還有一張失主的名片。',
+    choices: [
+      { text: '主動送去失物招領', result: '失主感動得熱淚盈眶，還送你一份謝禮，你的好名聲也傳開了。', effects: { cha: 5, gold: 10 } },
+      { text: '偷偷收進口袋', result: '荷包確實變重了，但你走路總覺得背後有人在盯著你……', effects: { gold: 45, cha: -4 } } ] },
+];
+
+// 把外部（AI）資料整理成安全的事件物件；格式不對就回傳 null
+const EFFECT_KEY_MAP = { stamina: 'stamina', intelligence: 'int', int: 'int', strength: 'str', str: 'str', charm: 'cha', cha: 'cha', weight: 'weight', gold: 'gold' };
+const EFFECT_RANGE = { stamina: [-30, 30], int: [-5, 10], str: [-5, 10], cha: [-5, 10], weight: [-6, 8], gold: [-60, 90] };
+function sanitizeEffects(raw) {
+  const out = {};
+  if (!raw || typeof raw !== 'object') return out;
+  for (const [k, v] of Object.entries(raw)) {
+    const key = EFFECT_KEY_MAP[k];
+    const n = Math.round(Number(v));
+    if (!key || !Number.isFinite(n)) continue;
+    out[key] = clamp(n, EFFECT_RANGE[key][0], EFFECT_RANGE[key][1]);
+  }
+  return out;
+}
+function sanitizeEvent(obj) {
+  if (!obj || typeof obj !== 'object') return null;
+  const str = (v, max) => (typeof v === 'string' ? v.trim().slice(0, max) : '');
+  const title = str(obj.title, 24), story = str(obj.story, 400);
+  if (!title || !story || !Array.isArray(obj.choices) || obj.choices.length < 2) return null;
+  const choices = [];
+  for (const c of obj.choices.slice(0, 2)) {
+    if (!c) return null;
+    const text = str(c.text, 60), result = str(c.result, 300);
+    if (!text || !result) return null;
+    choices.push({ text, result, effects: sanitizeEffects(c.effects) });
+  }
+  return { title, emoji: str(obj.emoji, 4) || '📮', story, choices };
+}
+
+// 解析 AI 回傳（容忍 ```json 包裹或前後多餘文字）
+function parseJsonLoose(text) {
+  if (typeof text !== 'string') throw new Error('not text');
+  let t = text.trim().replace(/^```(?:json)?/i, '').replace(/```$/, '').trim();
+  const a = t.indexOf('{'), b = t.lastIndexOf('}');
+  if (a < 0 || b <= a) throw new Error('no json');
+  return JSON.parse(t.slice(a, b + 1));
+}
+
+// 在地備用事件：優先挑符合觸發原因標籤、且最近沒出現過的
+function pickLocalEvent(s, tag) {
+  const fresh = LOCAL_EVENTS.filter(e => !s.eventTitles.includes(e.title));
+  const pool = fresh.length ? fresh : LOCAL_EVENTS;
+  const tagged = tag ? pool.filter(e => e.tag === tag) : [];
+  return JSON.parse(JSON.stringify(pick(tagged.length ? tagged : pool)));
+}
+
+// 豬豬外觀判定（給 SVG 用）
+function getMood(s) {
+  if (s.sickDays > 0 || s.stamina <= 10) return 'sick';
+  if (s.stamina <= 35) return 'tired';
+  if (s.stamina >= 65) return 'happy';
+  return 'normal';
+}
+function getLook(s) {
+  const legend = Math.min(s.int, s.str, s.cha) >= OMNI_MIN;
+  const sx = s.weight < 25 ? 0.9 : clamp(1 + (s.weight - 30) / 80, 0.9, 1.75);
+  let hat = null;
+  if (legend) hat = 'crown';
+  else if (s.int >= 60 && s.int >= s.str) hat = 'mortar';
+  else if (s.str >= 60) hat = 'helmet';
+  let eyewear = null;
+  if (s.cha >= 60 && s.cha >= s.int) eyewear = 'shades';
+  else if (s.int >= 35) eyewear = 'glasses';
+  return { legend, sx, sy: 1 + (sx - 1) * 0.13, hat, eyewear, bow: s.cha >= 35, sword: s.str >= 35, sparkle: s.cha >= 60 };
+}
+function getPigTitle(s) {
+  if (Math.min(s.int, s.str, s.cha) >= OMNI_MIN) return '傳說級全能豬';
+  if (s.weight >= 100) return '巨無霸豬';
+  const m = Math.max(s.int, s.str, s.cha);
+  if (m < 30) return s.weight >= 70 ? '圓滾滾小豬' : (s.weight <= 22 ? '纖瘦小豬' : '平凡小粉豬');
+  if (m === s.int) return m >= 60 ? '博士豬' : '書呆小豬';
+  if (m === s.str) return m >= 60 ? '騎士豬' : '肌肉小豬';
+  return m >= 60 ? '偶像豬' : '人氣小豬';
+}
+// ===== LOGIC END =====
+
+/* ============================ 以下為畫面與互動 ============================ */
+const $ = id => document.getElementById(id);
+let state = null;
+let busyFlag = false;
+let deferredInstall = null;
+let aiWarned = false;
+
+// ---------- 存檔 ----------
+function save() { try { localStorage.setItem(SAVE_KEY, JSON.stringify(state)); } catch (e) { /* 忽略 */ } }
+function loadState() {
+  try {
+    const raw = localStorage.getItem(SAVE_KEY);
+    if (!raw) return null;
+    const s = JSON.parse(raw);
+    if (!s || s.v !== 1 || typeof s.day !== 'number') return null;
+    return Object.assign(newState(), s);
+  } catch (e) { return null; }
+}
+function loadBook() { try { return JSON.parse(localStorage.getItem(BOOK_KEY)) || {}; } catch (e) { return {}; } }
+function saveBook(b) { try { localStorage.setItem(BOOK_KEY, JSON.stringify(b)); } catch (e) { /* 忽略 */ } }
+function getKey() { try { return (localStorage.getItem(API_KEY_STORE) || '').trim(); } catch (e) { return ''; } }
+
+// ---------- 小工具 ----------
+const esc = s => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+function toast(msg, ms = 2400) {
+  const t = document.createElement('div');
+  t.className = 'toast'; t.textContent = msg; document.body.appendChild(t);
+  setTimeout(() => t.remove(), ms);
+}
+function setBusy(v) { busyFlag = v; document.body.classList.toggle('busy', v); }
+function fmtVal(k, v) { return (v > 0 ? '+' : '') + v + UNIT[k]; }
+function chipsHtml(real) {
+  return KEYS.filter(k => real[k]).map(k =>
+    `<span class="chip ${real[k] > 0 ? 'up' : 'down'}">${LABEL[k]} ${fmtVal(k, real[k])}</span>`).join(' ');
+}
+function addLog(text, cls = '') {
+  state.log.unshift({ day: Math.min(state.day, TOTAL_DAYS), text, cls });
+  if (state.log.length > 60) state.log.length = 60;
+}
+function say(text) { $('bubble').textContent = text; }
+
+// ---------- 彈窗 ----------
+function closeModal() { const o = document.getElementById('modalOverlay'); if (o) o.remove(); }
+function showModal({ title = '', html = '', buttons = [], wide = false, row = false, dismiss = false }) {
+  closeModal();
+  const ov = document.createElement('div');
+  ov.className = 'overlay'; ov.id = 'modalOverlay';
+  const m = document.createElement('div');
+  m.className = 'modal' + (wide ? ' wide' : '');
+  m.setAttribute('role', 'dialog'); m.setAttribute('aria-modal', 'true');
+  const inner = document.createElement('div');
+  inner.className = 'modal-inner';
+  inner.innerHTML = (title ? `<h2>${title}</h2>` : '') + `<div class="mbody">${html}</div>`;
+  const bar = document.createElement('div');
+  bar.className = 'modal-btns' + (row ? ' row' : '');
+  buttons.forEach(b => {
+    const el = document.createElement('button');
+    el.className = 'mbtn ' + (b.cls || '');
+    el.innerHTML = b.text;
+    el.addEventListener('click', () => b.onClick && b.onClick(el));
+    bar.appendChild(el);
+  });
+  if (buttons.length) inner.appendChild(bar);
+  m.appendChild(inner); ov.appendChild(m);
+  if (dismiss) ov.addEventListener('click', e => { if (e.target === ov) closeModal(); });
+  document.body.appendChild(ov);
+  return { overlay: ov, modal: m, body: inner.querySelector('.mbody'), bar };
+}
+function confirmBox(title, html, okText = '確定', cancelText = '取消') {
+  return new Promise(res => {
+    showModal({ title, html, row: true, buttons: [
+      { text: cancelText, cls: 'center', onClick: () => { closeModal(); res(false); } },
+      { text: okText, cls: 'center primary', onClick: () => { closeModal(); res(true); } },
+    ] });
+  });
+}
+
+// ---------- 豬豬 SVG 更新 ----------
+const SKINS = {
+  normal: { skin: '#ffb9ca', line: '#e58aa1', snout: '#ff98b2', belly: '#ffd3de', cheek: '#ff7f9f', inner: '#ff9fb4', hoof: '#e590a4', nostril: '#b8576f' },
+  sick:   { skin: '#bfe3cf', line: '#6fa58a', snout: '#a5d4bc', belly: '#d6efe0', cheek: '#7fc6b0', inner: '#9fd1b8', hoof: '#86b8a0', nostril: '#4f8a72' },
+};
+const show = (id, on) => { const el = $(id); if (el) el.style.display = on ? '' : 'none'; };
+function renderPig() {
+  const s = state, look = getLook(s), mood = getMood(s);
+  const svg = $('pigSvg');
+  const pal = SKINS[mood === 'sick' ? 'sick' : 'normal'];
+  for (const [k, v] of Object.entries(pal)) svg.style.setProperty('--' + k, v);
+
+  // 體型：以腳底為中心縮放，越重越圓滾滾
+  $('pigScale').setAttribute('transform', `translate(160 292) scale(${look.sx.toFixed(3)} ${look.sy.toFixed(3)}) translate(-160 -292)`);
+  // 木劍握在右手：手臂隨體型外移，變胖時劍身放直一點避免超出畫面
+  $('sword').setAttribute('transform', `translate(${((look.sx - 1) * 74).toFixed(1)} 0)`);
+  $('swordTilt').setAttribute('transform', `translate(252 214) rotate(${(22 - Math.max(0, look.sx - 1) * 22).toFixed(1)})`);
+
+  // 配件
+  show('crown', look.hat === 'crown'); show('mortar', look.hat === 'mortar'); show('helmet', look.hat === 'helmet');
+  show('glasses', look.eyewear === 'glasses'); show('shades', look.eyewear === 'shades');
+  show('bowtie', look.bow); show('sword', look.sword); show('sparkles', look.sparkle);
+  show('aura', look.legend); show('cape', look.legend);
+
+  // 表情
+  const droop = mood === 'tired' || mood === 'sick';
+  $('earL').setAttribute('transform', droop ? 'rotate(-44 118 100)' : '');
+  $('earR').setAttribute('transform', droop ? 'rotate(44 202 100)' : '');
+  show('lids', droop);
+  show('hearts', mood === 'happy');
+  show('sweat', droop);
+  show('bandage', mood === 'sick');
+  show('tongue', mood === 'happy');
+  $('cheeks').setAttribute('opacity', mood === 'happy' ? '0.9' : (mood === 'sick' ? '0.35' : '0.6'));
+  const mouth = $('mouth');
+  if (mood === 'happy') { mouth.setAttribute('d', 'M144 178 Q160 206 176 178 Z'); mouth.setAttribute('fill', '#b83a58'); }
+  else if (mood === 'tired') { mouth.setAttribute('d', 'M146 184 Q153 179 160 184 T174 184'); mouth.setAttribute('fill', 'none'); }
+  else if (mood === 'sick') { mouth.setAttribute('d', 'M146 188 Q160 175 174 188'); mouth.setAttribute('fill', 'none'); }
+  else { mouth.setAttribute('d', 'M146 180 Q160 192 174 180'); mouth.setAttribute('fill', 'none'); }
+
+  $('pigTitle').textContent = '🐷 ' + getPigTitle(s) + (look.sx >= 1.5 ? '（圓滾滾）' : '');
+}
+
+// ---------- 數值列 ----------
+const STAT_ROWS = [
+  { k: 'stamina', icon: '⚡' }, { k: 'int', icon: '📘' }, { k: 'str', icon: '💪' }, { k: 'cha', icon: '💖' }, { k: 'weight', icon: '⚖️' },
+];
+function buildStats() {
+  $('stats').innerHTML = STAT_ROWS.map(r => `
+    <div class="stat" data-k="${r.k}">
+      <div class="lbl">${r.icon} ${LABEL[r.k]}</div>
+      <div class="bar"><div class="fill"></div></div>
+      <div class="val"><span class="num"></span><span class="delta"></span></div>
+    </div>`).join('');
+}
+function renderStats() {
+  const s = state;
+  for (const r of STAT_ROWS) {
+    const row = document.querySelector(`.stat[data-k="${r.k}"]`);
+    const v = s[r.k];
+    const fill = row.querySelector('.fill');
+    let pct, color;
+    if (r.k === 'weight') {
+      pct = clamp((v - 10) / 130 * 100, 3, 100);
+      color = v >= 100 ? '#e8584f' : (v >= 70 ? '#f08a3c' : (v <= 20 ? '#7fb2e8' : '#4c9be8'));
+    } else {
+      pct = v;
+      color = { stamina: v < 30 ? '#e8584f' : (v < 60 ? '#f5c542' : '#6cc04a'), int: '#4c9be8', str: '#f08a3c', cha: '#f06fa0' }[r.k];
+    }
+    fill.style.width = pct + '%';
+    fill.style.background = color;
+    row.querySelector('.num').textContent = r.k === 'weight' ? v + ' kg' : v + (r.k === 'stamina' ? ' / 100' : '');
+  }
+  $('dayNum').textContent = Math.min(s.day, TOTAL_DAYS);
+  $('goldNum').textContent = s.gold;
+}
+function flash(real) {
+  for (const k of Object.keys(real)) {
+    const row = document.querySelector(`.stat[data-k="${k}"] .delta`);
+    if (!row) continue;
+    row.textContent = fmtVal(k, real[k]);
+    row.className = 'delta ' + (real[k] > 0 ? 'up' : 'down');
+    void row.offsetWidth;
+    row.classList.add('show');
+  }
+}
+
+// ---------- 行程按鈕 ----------
+function actionChips(a) {
+  const chips = [];
+  if (a.main) chips.push(`<span class="chip up">${LABEL[a.main]} ＋＋</span>`);
+  for (const [k, v] of Object.entries(a.delta)) chips.push(`<span class="chip ${v > 0 ? 'up' : 'down'}">${LABEL[k]} ${fmtVal(k, v)}</span>`);
+  return chips.join('');
+}
+function renderActions() {
+  const box = $('actions');
+  if (!box.children.length) {
+    box.innerHTML = ACTIONS.map(a => `
+      <button class="act" data-id="${a.id}">
+        <span class="name">${a.emoji} ${a.name}</span>
+        <span class="chips">${actionChips(a)}</span>
+        <span class="warn" hidden>⚠️ 體力會歸零，會昏倒住院！</span>
+      </button>`).join('');
+    box.querySelectorAll('.act').forEach(b => b.addEventListener('click', () => onAction(b.dataset.id)));
+  }
+  box.querySelectorAll('.act').forEach(b => {
+    const a = ACTIONS.find(x => x.id === b.dataset.id);
+    const poor = !canAfford(state, a);
+    b.disabled = poor || state.ended;
+    b.title = poor ? '豬豬幣不夠囉' : '';
+    const danger = willCollapse(state, a);
+    b.classList.toggle('danger', danger);
+    b.querySelector('.warn').hidden = !danger;
+  });
+}
+function renderLog() {
+  $('log').innerHTML = state.log.length
+    ? state.log.map(l => `<li class="${esc(l.cls || '')}"><span class="d">第${l.day}天</span> ${esc(l.text)}</li>`).join('')
+    : '<li class="small">還沒有日記，今天就開始吧！</li>';
+}
+function renderAll() { renderStats(); renderPig(); renderActions(); renderLog(); }
+
+// ---------- 每日流程 ----------
+async function onAction(id) {
+  if (busyFlag || state.ended || state.pendingEvent) return;
+  const a = ACTIONS.find(x => x.id === id);
+  if (!canAfford(state, a)) { toast('豬豬幣不夠囉！先去打工吧'); return; }
+  if (willCollapse(state, a)) {
+    const ok = await confirmBox('⚠️ 體力快撐不住了', '做完這個行動，體力會歸零，豬豬會<b>昏倒住院 2 天</b>並扣醫藥費。<br>確定要硬撐嗎？', '硬撐！', '我再想想');
+    if (!ok) return;
+  }
+  setBusy(true);
+  const dayDone = state.day;
+  const wasSick = state.sickDays > 0;
+  const { real, weak } = runAction(state, a);
+  if (wasSick) state.sickDays = Math.max(0, state.sickDays - 1);
+
+  const flavor = pick(FLAVOR[a.id]);
+  addLog(`${a.emoji} ${flavor}${weak ? '（身體虛弱，成效打七折）' : ''}`);
+  flash(real);
+  say(flavor.length > 16 ? flavor.slice(0, 16) + '…' : flavor);
+
+  let nextDay = dayDone + 1;
+  let hosp = null;
+  if (state.stamina <= 0) {
+    hosp = hospitalize(state);
+    nextDay = dayDone + 3;     // 當天昏倒 + 住院 2 天
+    addLog(`🏥 體力歸零昏倒！住院休息 2 天，醫藥費 ${hosp.fee}G。`, 'bad');
+  }
+  state.day = nextDay;
+  save();
+  renderAll();
+
+  if (hosp) {
+    await new Promise(res => showModal({
+      title: '🏥 昏倒住院！',
+      html: `<div class="big">🤒</div><p>豬豬體力歸零，被緊急送進牧場醫院。<br>強制休息 <b>2 天</b>，支付醫藥費 <b>${hosp.fee}G</b>。</p><p class="small">出院後體力恢復到 60，但身體還很虛弱，下次行動成效打七折。</p>`,
+      buttons: [{ text: '好吧…乖乖休息', cls: 'center primary', onClick: () => { closeModal(); res(); } }],
+    }));
+  }
+
+  if (state.day > TOTAL_DAYS) { setBusy(false); await finishGame(); return; }
+
+  const trig = checkEventTrigger(state);
+  if (trig) {
+    state.nextEventDay = state.day + rand(3, 4);
+    save();
+    await runEvent(trig);
+  }
+  setBusy(false);
+  save();
+  renderAll();
+  say(pick({ happy: ['今天心情超好！', '哼哼～再來一份松露！', '我感覺自己無所不能！'], normal: ['今天要做什麼呢？', '準備好了，老闆！', '努力成為傳奇豬！'], tired: ['好累喔…想睡覺…', '腳軟軟的…', '讓我休息一下嘛…'], sick: ['頭暈暈的…', '我覺得…不太舒服…', '需要補充體力…'] }[getMood(state)]));
+}
+
+// ---------- Gemini ----------
+async function callGemini(prompt) {
+  const key = getKey();
+  if (!key) throw new Error('NO_KEY');
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent`;
+  const contents = [{ role: 'user', parts: [{ text: prompt }] }];
+  // 第一組設定關閉思考以加快速度；若被拒絕（400）就退回最簡設定
+  const bodies = [
+    { contents, generationConfig: { responseMimeType: 'application/json', temperature: 1, maxOutputTokens: 1200, thinkingConfig: { thinkingBudget: 0 } } },
+    { contents, generationConfig: { responseMimeType: 'application/json', temperature: 1 } },
+  ];
+  let lastErr = new Error('unknown');
+  for (let i = 0; i < bodies.length; i++) {
+    const ctrl = new AbortController();
+    const timer = setTimeout(() => ctrl.abort(), 25000);
+    try {
+      const r = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json', 'x-goog-api-key': key }, body: JSON.stringify(bodies[i]), signal: ctrl.signal });
+      if (!r.ok) {
+        lastErr = new Error('HTTP ' + r.status);
+        if (r.status === 400 && i < bodies.length - 1) continue;
+        throw lastErr;
+      }
+      const data = await r.json();
+      const text = (data.candidates && data.candidates[0] && data.candidates[0].content && data.candidates[0].content.parts || []).map(p => p.text || '').join('');
+      if (!text) throw new Error('EMPTY');
+      return text;
+    } finally { clearTimeout(timer); }
+  }
+  throw lastErr;
+}
+function stateBrief(s) {
+  return `第${Math.min(s.day, TOTAL_DAYS)}天／共30天；體力${s.stamina}/100、智慧${s.int}、力量${s.str}、魅力${s.cha}、體重${s.weight}kg、豬豬幣${s.gold}G`;
+}
+function aiFail(e) {
+  if (!aiWarned && e && e.message !== 'NO_KEY') { aiWarned = true; toast('AI 連線失敗，改用內建內容（請檢查 API Key 與網路）', 3600); }
+}
+
+async function getEvent(trig) {
+  if (getKey()) {
+    try {
+      const prompt = `你是《豬豬夢工場》的劇情產生器，這是一款溫馨又搞笑的小豬養成遊戲。
+目前狀態：${stateBrief(state)}。
+觸發原因：${trig.reason}。
+最近發生過的事件（請避免重複）：${state.eventTitles.slice(-5).join('、') || '無'}。
+請依這隻小豬目前的數值特色，寫一個「突發事件」，語氣幽默溫暖，使用繁體中文（台灣用語），事件要與目前的數值或觸發原因有關。
+只回傳純 JSON，不要 markdown、不要任何說明文字，格式如下：
+{"title":"事件標題(12字內)","emoji":"一個emoji","story":"事件描述，60~100字","choices":[{"text":"選項文字(20字內)","result":"選擇後的結果描述，40~70字","effects":{"stamina":0,"intelligence":0,"strength":0,"charm":0,"weight":0,"gold":0}},{"text":"...","result":"...","effects":{"stamina":0,"intelligence":0,"strength":0,"charm":0,"weight":0,"gold":0}}]}
+數值規則（整數）：stamina 在 -25~25；intelligence、strength、charm 在 -4~8；weight 在 -4~5（公斤）；gold 在 -50~80。兩個選項要有取捨（例如一個賺錢、一個提升能力），不要兩個都是好處。`;
+      const ev = sanitizeEvent(parseJsonLoose(await callGemini(prompt)));
+      if (ev) { ev.source = 'ai'; return ev; }
+      throw new Error('BAD_EVENT');
+    } catch (e) { aiFail(e); }
+  }
+  const ev = pickLocalEvent(state, trig.tag);
+  ev.source = 'local';
+  return ev;
+}
+
+async function getNews(ending) {
+  const s = state;
+  const fallback = () => ({
+    headline: ending.headline, subhead: `豬豬日報特別報導：${ending.title}`,
+    article: `${ending.story}\n據悉，這位豬豬主角在 30 天內累積了智慧 ${s.int}、力量 ${s.str}、魅力 ${s.cha}，體重 ${s.weight} 公斤，口袋裡還剩 ${s.gold} 枚豬豬幣。\n${pick(['鄰居們紛紛表示：「我們一直都知道他很特別。」', '牧場長老說：「這孩子的未來，不可限量。」', '本報記者實地採訪，豬豬仍然邊吃點心邊微笑，不願多透露細節。'])}`,
+    quote: ending.quote, source: 'local',
+  });
+  if (!getKey()) return fallback();
+  try {
+    const prompt = `你是《豬豬日報》的資深記者。一隻小豬經過 30 天的養成，達成了結局「${ending.title}」。
+最終數值：智慧${s.int}、力量${s.str}、魅力${s.cha}、體重${s.weight}kg、豬豬幣${s.gold}G。
+這 30 天裡發生過的事件：${s.eventTitles.join('、') || '平靜的日常'}。
+請寫一則搞笑又溫馨的報紙頭條報導（繁體中文，台灣用語），內容要呼應結局與最終數值，並可以巧妙帶到上述經歷。
+只回傳純 JSON，不要 markdown 與任何說明，格式：
+{"headline":"頭條大標(24字內)","subhead":"副標(32字內)","article":"內文，120~200字，分2~3段，段落用\\n分隔","quote":"小豬受訪的一句話(28字內)"}`;
+    const o = parseJsonLoose(await callGemini(prompt));
+    const t = (v, n) => (typeof v === 'string' ? v.trim().slice(0, n) : '');
+    const news = { headline: t(o.headline, 60), subhead: t(o.subhead, 80), article: t(o.article, 700), quote: t(o.quote, 80), source: 'ai' };
+    if (!news.headline || !news.article) throw new Error('BAD_NEWS');
+    return news;
+  } catch (e) { aiFail(e); return fallback(); }
+}
+
+// ---------- 突發事件 ----------
+async function runEvent(trig) {
+  showModal({ title: '📮 有事情發生了…', html: '<div class="spinner"></div><p style="text-align:center">豬豬遇到了什麼狀況呢？</p>' });
+  const ev = await getEvent(trig);
+  state.pendingEvent = ev;
+  save();
+  await presentEvent(ev);
+  state.pendingEvent = null;
+  save();
+}
+function presentEvent(ev) {
+  return new Promise(resolve => {
+    const tag = ev.source === 'ai' ? '<span class="tag-ai">✨ Gemini</span>' : '<span class="tag-local tag-ai">內建</span>';
+    const m = showModal({
+      title: `${esc(ev.title)}${tag}`,
+      html: `<div class="big">${esc(ev.emoji)}</div><p>${esc(ev.story)}</p>${ev.source === 'local' && !getKey() ? '<p class="small">💡 在「⚙️ 設定」填入 Gemini API Key，就能解鎖每局都不同的 AI 事件。</p>' : ''}`,
+      buttons: ev.choices.map((c, i) => ({
+        text: `${i === 0 ? '🅰️' : '🅱️'} ${esc(c.text)}`,
+        onClick: () => {
+          const real = applyDelta(state, c.effects);
+          if (state.stamina < 1) { real.stamina = (real.stamina || 0) + (1 - state.stamina); state.stamina = 1; }
+          state.eventTitles.push(ev.title);
+          if (state.eventTitles.length > 20) state.eventTitles.shift();
+          if (ev.source === 'ai') state.aiEvents++;
+          addLog(`${ev.emoji} 【${ev.title}】${c.text}`, 'ev');
+          save(); renderAll(); flash(real);
+          m.body.innerHTML = `<div class="big">${esc(ev.emoji)}</div><p><b>你選擇了：</b>${esc(c.text)}</p><p>${esc(c.result)}</p><div class="sumrow">${chipsHtml(real) || '<span>沒有數值變化</span>'}</div>`;
+          m.bar.innerHTML = '';
+          const ok = document.createElement('button');
+          ok.className = 'mbtn center primary'; ok.textContent = '繼續冒險 ▶';
+          ok.addEventListener('click', () => { closeModal(); resolve(); });
+          m.bar.appendChild(ok);
+        },
+      })),
+    });
+  });
+}
+
+// ---------- 結局 ----------
+async function finishGame() {
+  const e = pickEnding(state);
+  state.ended = true; state.endingId = e.id;
+  const book = loadBook();
+  const first = !book[e.id];
+  book[e.id] = { count: ((book[e.id] && book[e.id].count) || 0) + 1, last: new Date().toISOString(), best: { int: state.int, str: state.str, cha: state.cha, weight: state.weight, gold: state.gold } };
+  saveBook(book);
+  state.firstUnlock = first;
+  save(); renderAll();
+  await showEnding();
+}
+async function showEnding() {
+  const e = ENDINGS.find(x => x.id === state.endingId) || ENDINGS[ENDINGS.length - 1];
+  const loading = showModal({ title: `${e.emoji} 結局揭曉！`, html: '<div class="spinner"></div><p style="text-align:center">豬豬日報正在趕稿中…</p>' });
+  if (!state.news) { state.news = await getNews(e); save(); }
+  const n = state.news;
+  const paras = String(n.article).split(/\n+/).filter(Boolean).map(p => `<p>${esc(p)}</p>`).join('');
+  const s = state;
+  const clone = $('pigSvg').cloneNode(true);
+  clone.removeAttribute('id');
+  clone.querySelectorAll('[id]').forEach(x => x.removeAttribute('id'));
+  const book = loadBook();
+  const unlocked = Object.keys(book).length;
+  closeModal();
+  const m = showModal({
+    wide: true, row: true,
+    title: `${e.emoji} 結局：${esc(e.title)}`,
+    html: `
+      ${s.firstUnlock ? '<p style="text-align:center;margin:0"><b style="color:#c23a30">🎉 新結局解鎖！</b></p>' : ''}
+      <div class="endpig"></div>
+      <div class="sumrow"><span>📘 智慧 ${s.int}</span><span>💪 力量 ${s.str}</span><span>💖 魅力 ${s.cha}</span><span>⚖️ ${s.weight}kg</span><span>🪙 ${s.gold}G</span></div>
+      <div class="news">
+        <div class="mast">豬豬日報</div>
+        <div class="meta"><span>豬曆第 30 天</span><span>${n.source === 'ai' ? '✨ Gemini 特約記者' : '本報編輯部'}</span><span>頭版</span></div>
+        <div class="head">${esc(n.headline)}</div>
+        <div class="sub">${esc(n.subhead || '')}</div>
+        <div class="body">${paras}</div>
+        <div class="quote">「${esc(n.quote || e.quote)}」—— 受訪豬豬</div>
+      </div>
+      <p class="small" style="text-align:center">已解鎖結局 ${unlocked} / ${ENDINGS.length}</p>`,
+    buttons: [
+      { text: '📖 結局圖鑑', cls: 'center', onClick: () => showBook(true) },
+      { text: '🔄 重新開始', cls: 'center primary', onClick: () => { closeModal(); restart(); } },
+    ],
+  });
+  m.body.querySelector('.endpig').appendChild(clone);
+}
+function showBook(fromEnding = false) {
+  const book = loadBook();
+  const cards = ENDINGS.map(e => {
+    const got = book[e.id];
+    if (!got) return `<div class="bcard locked"><div class="e">❓</div><div class="t">？？？</div><div class="stars">${'★'.repeat(e.stars)}</div><div>${e.hidden ? '隱藏結局' : '尚未解鎖'}</div></div>`;
+    return `<div class="bcard"><div class="e">${e.emoji}</div><div class="t">${esc(e.title)}</div><div class="stars">${'★'.repeat(e.stars)}</div><div>${esc(e.hint)}</div><div class="small">達成 ${got.count} 次</div></div>`;
+  }).join('');
+  showModal({
+    wide: true, dismiss: !fromEnding, row: true,
+    title: `📖 結局圖鑑（${Object.keys(book).length} / ${ENDINGS.length}）`,
+    html: `<div class="book-grid">${cards}</div>`,
+    buttons: [{ text: fromEnding ? '← 回到結局' : '關閉', cls: 'center primary', onClick: () => { if (fromEnding && state.ended) showEnding(); else closeModal(); } }],
+  });
+}
+
+// ---------- 設定／說明／重新開始 ----------
+function showSettings() {
+  const hasKey = !!getKey();
+  const iosHint = /iphone|ipad|ipod/i.test(navigator.userAgent) ? '<p class="small">📱 iPhone / iPad：在 Safari 點「分享」→「加入主畫面」即可安裝。</p>' : '';
+  const m = showModal({
+    title: '⚙️ 設定', dismiss: true,
+    html: `
+      <p><b>Gemini API Key</b>（選填）</p>
+      <p class="small">填入後，突發事件與結局報導會由 <code>${MODEL}</code> 即時生成；不填則使用內建內容。金鑰只會存在這台裝置的瀏覽器，並直接傳送給 Google。<br>
+      取得方式：<a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener">Google AI Studio</a></p>
+      <input class="field" id="keyInput" type="password" autocomplete="off" placeholder="${hasKey ? '已設定（輸入新值可覆蓋）' : '貼上你的 API Key'}">
+      ${iosHint}
+      <p class="small">目前狀態：${hasKey ? '✅ 已設定 API Key' : '⚪ 尚未設定（使用內建事件）'}</p>`,
+    buttons: [
+      { text: '💾 儲存', cls: 'center primary', onClick: () => {
+        const v = $('keyInput').value.trim();
+        if (v) { try { localStorage.setItem(API_KEY_STORE, v); } catch (e) { /* 忽略 */ } aiWarned = false; toast('已儲存 API Key'); }
+        closeModal();
+      } },
+      { text: '🗑️ 清除 Key', cls: 'center', onClick: () => { try { localStorage.removeItem(API_KEY_STORE); } catch (e) { /* 忽略 */ } toast('已清除 API Key'); closeModal(); } },
+      { text: '關閉', cls: 'center', onClick: closeModal },
+    ],
+  });
+  return m;
+}
+function showIntro() {
+  showModal({
+    title: '🐷 歡迎來到豬豬夢工場！',
+    html: `<div class="big">🌾🐖🌾</div>
+      <p>你有 <b>30 天</b>，要把這隻普通的小粉豬養成<b>獨當一面的傳奇豬豬</b>！</p>
+      <p>每天選 <b>1 個行動</b>：讀書、健身、練儀態、大吃大喝、打工，或睡覺回血。體力歸零會昏倒住院，記得量力而為。</p>
+      <p>途中會遇到<b>突發事件</b>，你的選擇會影響數值。第 30 天結束後，依最終數值解鎖專屬結局與報紙頭條！</p>
+      <p class="small">🏆 一共有 ${ENDINGS.length} 種結局等你收集。</p>`,
+    buttons: [{ text: '開始養成 ▶', cls: 'center primary', onClick: () => { closeModal(); say('今天要做什麼呢？'); } }],
+  });
+}
+async function restart() {
+  if (busyFlag) return;
+  if (!state.ended) {
+    const ok = await confirmBox('🔄 重新開始？', '目前的養成進度會消失，但<b>結局圖鑑</b>會保留。', '重新開始', '取消');
+    if (!ok) return;
+  }
+  state = newState();
+  save(); setBusy(false); closeModal(); renderAll(); say('新的豬生，開始囉！'); showIntro();
+}
+
+// ---------- 啟動 ----------
+async function init() {
+  state = loadState() || newState();
+  buildStats(); renderAll();
+  $('btnBook').addEventListener('click', () => showBook(false));
+  $('btnSettings').addEventListener('click', showSettings);
+  $('btnRestart').addEventListener('click', restart);
+  $('btnInstall').addEventListener('click', async () => {
+    if (!deferredInstall) return;
+    deferredInstall.prompt();
+    try { await deferredInstall.userChoice; } catch (e) { /* 忽略 */ }
+    deferredInstall = null; $('btnInstall').hidden = true;
+  });
+  window.addEventListener('beforeinstallprompt', e => { e.preventDefault(); deferredInstall = e; $('btnInstall').hidden = false; });
+  window.addEventListener('appinstalled', () => { $('btnInstall').hidden = true; toast('已加到主畫面 🎉'); });
+
+  if (state.ended) { setBusy(true); await showEnding(); setBusy(false); return; }
+  if (state.pendingEvent) {          // 事件進行到一半就關掉頁面時，接續顯示
+    setBusy(true);
+    await presentEvent(state.pendingEvent);
+    state.pendingEvent = null; save(); setBusy(false); renderAll();
+    return;
+  }
+  if (state.day === 1 && state.log.length === 0) showIntro();
+}
+
+if ('serviceWorker' in navigator && /^https?:$/.test(location.protocol)) {
+  window.addEventListener('load', () => navigator.serviceWorker.register('./sw.js').catch(() => { /* 離線功能失敗不影響遊玩 */ }));
+}
+init();
+</script>
+</body>
+</html>
