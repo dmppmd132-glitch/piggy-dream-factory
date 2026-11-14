@@ -1,0 +1,14 @@
+# 豬豬夢工場排行榜（Cloudflare Worker + D1）
+name = "piggy-dream-factory-leaderboard"
+main = "src/index.js"
+compatibility_date = "2025-01-01"
+
+[vars]
+# 允許呼叫排行榜的網頁來源（填你的 GitHub Pages 網址，不含路徑），多個用逗號分隔
+# 例如："https://dmppmd132-glitch.github.io"
+ALLOWED_ORIGINS = "https://dmppmd132-glitch.github.io,http://localhost:8080"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "piggy-leaderboard"
+database_id = "請改成 wrangler d1 create 之後印出的 database_id"

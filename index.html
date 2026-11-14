@@ -175,6 +175,22 @@ body.busy .act{pointer-events:none;opacity:.6}
 .bcard .t{font-weight:900;font-size:.95rem}
 .bcard.locked{background:#d8cdb0;color:#7a6a4a}
 .bcard.locked .e{filter:grayscale(1) brightness(.5)}
+/* 排行榜 */
+.scorebox{margin:8px 0;padding:6px 10px;border:3px solid #5e3b1b;border-radius:8px;background:#fff7d6;text-align:center;font-weight:800}
+.scorebox b{font-size:1.5rem;color:#c25a00}
+.scorebox small{display:block;font-weight:600;color:#7a6040;font-size:.75rem}
+.tabs{display:flex;gap:6px;justify-content:center;margin-bottom:8px}
+.tab{border:3px solid var(--wood-dark);border-radius:8px;background:#fffaf0;padding:3px 14px;font-weight:800;cursor:pointer;box-shadow:0 3px 0 var(--wood-dark)}
+.tab.on{background:#ffd95a}
+.lb{width:100%;border-collapse:collapse;font-size:.88rem}
+.lb th,.lb td{padding:5px 6px;border-bottom:1px dashed rgba(120,90,50,.4);text-align:left}
+.lb th{font-size:.78rem;color:#7a6040}
+.lb td.r{text-align:right;white-space:nowrap}
+.lb tr.me{background:#fff0a8}
+.lb .rk{font-weight:900;white-space:nowrap;width:2.6em}
+.lb .nm{font-weight:800;word-break:break-all}
+.lb .sub{display:block;font-size:.72rem;color:#7a6040;font-weight:600}
+.lb-empty{text-align:center;padding:16px 4px}
 .stars{color:#e0a000;letter-spacing:1px}
 
 .endpig{width:min(220px,60%);margin:0 auto;display:block}
@@ -214,6 +230,7 @@ body.busy .act{pointer-events:none;opacity:.6}
     <h1>🐷 豬豬夢工場<small>30 天豬生逆襲</small></h1>
     <div class="topbtns">
       <button class="tbtn" id="btnInstall" hidden>📲 安裝</button>
+      <button class="tbtn" id="btnRank">🏆 排行榜</button>
       <button class="tbtn" id="btnBook">📖 結局圖鑑</button>
       <button class="tbtn" id="btnSettings">⚙️ 設定</button>
       <button class="tbtn" id="btnRestart">🔄 重來</button>
@@ -402,6 +419,8 @@ body.busy .act{pointer-events:none;opacity:.6}
   </main>
 </div>
 
+<script src="config.js"></script>
+<script src="game-core.js"></script>
 <script>
 'use strict';
 /* =====================================================================
@@ -416,9 +435,13 @@ const MODEL = 'gemini-2.5-flash';
 const SAVE_KEY = 'pdf_save_v1';
 const BOOK_KEY = 'pdf_endings_v1';
 const API_KEY_STORE = 'pdf_gemini_key';
+const LB_KEY = 'pdf_leaderboard_v1';     // 本機排行榜
+const NAME_KEY = 'pdf_player_name';      // 玩家暱稱
+const DEVICE_KEY = 'pdf_device_id';      // 匿名裝置代碼（線上排行榜用來辨識同一位玩家）
+const LB_URL = ((window.PIG_CONFIG && window.PIG_CONFIG.leaderboardUrl) || '').replace(/\/+$/, '');
 
 // 各數值的上下限
-const OMNI_MIN = 70;   // 三項能力都達此值＝傳說級全能豬（外觀變傳說＋隱藏結局）
+const { OMNI_MIN, ENDINGS, pickEnding, calcScore, cleanName, NAME_MAX } = PigCore;
 const KEYS = ['stamina', 'int', 'str', 'cha', 'weight', 'gold'];
 const LIMITS = { stamina: [0, 100], int: [0, 100], str: [0, 100], cha: [0, 100], weight: [10, 200], gold: [0, 99999] };
 const LABEL = { stamina: '體力', int: '智慧', str: '力量', cha: '魅力', weight: '體重', gold: '豬豬幣' };
@@ -447,95 +470,7 @@ const FLAVOR = {
   sleep: ['呼嚕嚕～睡得像一顆球。', '夢到自己變成傳奇豬，嘴角還在笑。', '睡飽飽，精神全回來了。'],
 };
 
-// 多重結局（陣列順序 = 判定優先順序，第一個符合的就是結局）
-const ENDINGS = [
-  { id: 'omni', emoji: '🌟', title: '傳說中的全能豬', stars: 3, hidden: true,
-    hint: '智慧、力量、魅力三項都達 70 以上',
-    test: s => Math.min(s.int, s.str, s.cha) >= OMNI_MIN,
-    headline: '「全能豬」橫空出世　全牧場跪著喊偶像', quote: '我只是比較努力，不是比較神。',
-    story: '你既會解微積分，又能徒手劈木頭，還順便把整個牧場的小雞都迷倒。長老們決定把牧場改名為「豬豬王國」，你一邊啃蘋果一邊說：「低調，低調。」' },
-  { id: 'president', emoji: '🎩', title: '豬豬大總統', stars: 3,
-    hint: '智慧、魅力都達 60 以上，且豬豬幣至少 80',
-    test: s => s.int >= 60 && s.cha >= 60 && s.gold >= 80,
-    headline: '豬豬大總統就職　首道命令竟是「加菜」', quote: '我的政見只有一個：每天都要吃得飽！',
-    story: '憑著聰明的腦袋與迷人的演說，你高票當選第一任豬豬大總統。就職典禮上，你宣布國定假日增加到每週五天，全國豬民當場落淚鼓掌。' },
-  { id: 'idol', emoji: '🎤', title: '銀河偶像豬', stars: 3,
-    hint: '魅力 70 以上，體重 60kg 以下',
-    test: s => s.cha >= 70 && s.weight <= 60,
-    headline: '銀河偶像豬巡演破億人次　螢光棒庫存全宇宙告罄', quote: '大家的愛，我都收到了～哼哼！',
-    story: '你的歌聲從牧場傳到了銀河系，外星粉絲開著飛碟來應援。你在舞台上轉圈圈、比愛心，連黑洞都想拿來當你的背景。' },
-  { id: 'lightning', emoji: '⚡', title: '閃電賽跑豬', stars: 2,
-    hint: '體重降到 20kg 以下，力量 30 以上（瘦到極致）',
-    test: s => s.weight <= 20 && s.str >= 30,
-    headline: '閃電賽跑豬刷新紀錄　目擊者：「只看到一道粉紅色殘影」', quote: '我跑太快，連影子都追不上我。',
-    story: '瘦身加上鍛鍊，你變成了一道粉紅色閃電。田徑場的計時器因為跟不上你的速度，當場宣告罷工。' },
-  { id: 'knight', emoji: '🐉', title: '傳奇屠龍騎士豬', stars: 3,
-    hint: '力量 70 以上，體重在 21～75kg 之間',
-    test: s => s.str >= 70 && s.weight <= 75,
-    headline: '屠龍騎士豬凱旋　巨龍：「我只是想借個火」', quote: '其實那隻龍人很好，我們現在是球友。',
-    story: '你扛著木劍殺進龍穴，和巨龍大戰三百回合，最後兩邊累癱在地上一起看星星。傳說就這樣誕生了，只是細節被吟遊詩人誇大了一點點。' },
-  { id: 'nobel', emoji: '🔬', title: '諾貝爾豬博士', stars: 2,
-    hint: '智慧 70 以上',
-    test: s => s.int >= 70,
-    headline: '諾貝爾獎頒給豬博士　發明「永不冷掉的鹹酥雞」', quote: '科學的盡頭，是好吃。',
-    story: '你的腦袋裡裝著整座圖書館，還發明了讓午餐永遠保溫的魔法鍋。評審團邊吃邊投票，全票通過。' },
-  { id: 'sumo', emoji: '🥋', title: '橫綱相撲豬', stars: 2,
-    hint: '力量 40 以上，體重 60kg 以上',
-    test: s => s.str >= 40 && s.weight >= 60,
-    headline: '橫綱豬一屁股坐贏冠軍　對手：「我被壓扁了」', quote: '體重是我的武器，也是我的溫柔。',
-    story: '你用壯碩的體格與扎實的肌肉稱霸土俵，每次入場地面都會抖三下。粉絲說，你的屁股比任何必殺技都有說服力。' },
-  { id: 'chef', emoji: '👨‍🍳', title: '米其林三星主廚豬', stars: 2,
-    hint: '體重 55kg 以上，且智慧或魅力 35 以上',
-    test: s => s.weight >= 55 && (s.int >= 35 || s.cha >= 35),
-    headline: '米其林三星主廚豬開店　排隊人龍繞牧場三圈', quote: '好吃的秘訣？先自己吃三碗。',
-    story: '你把松露、熱情和一點點泥土香燉進同一鍋湯，竟成了全國最搶手的料理。評審吃完眼眶泛淚，說這是「家的味道」。' },
-  { id: 'tycoon', emoji: '💰', title: '豬豬首富', stars: 2,
-    hint: '豬豬幣 350 以上',
-    test: s => s.gold >= 350,
-    headline: '豬豬首富誕生　金幣多到拿來當枕頭', quote: '錢不是萬能，但可以買很多松露。',
-    story: '你把每一枚豬豬幣都存得好好的，30 天後荷包滿到快爆炸。銀行行員看到你都立正站好，還請你坐上最軟的那張沙發。' },
-  { id: 'noble', emoji: '👑', title: '優雅貴族豬', stars: 2,
-    hint: '魅力 50 以上，豬豬幣 200 以上',
-    test: s => s.cha >= 50 && s.gold >= 200,
-    headline: '優雅貴族豬舉辦茶會　全場小指翹得比天高', quote: '請用茶，不過別吃我的杯子。',
-    story: '你舉止優雅、口袋又夠深，鄰近牧場的豬都搶著收你的茶會邀請函。連最挑剔的老鵝都忍不住說：「哎呀，真有品味。」' },
-  { id: 'broke', emoji: '🥲', title: '窮得很快樂的流浪豬藝術家', stars: 1,
-    hint: '最後豬豬幣只剩 10 以下',
-    test: s => s.gold <= 10,
-    headline: '流浪豬藝術家街頭開唱　帽子裡只有一顆鈕扣', quote: '錢包空空，心裡滿滿。',
-    story: '你的豬豬幣花光了，但沒關係，你用快樂換來了滿滿的故事。路人投進帽子的，是一顆鈕扣和一個大大的微笑。' },
-  { id: 'couch', emoji: '🛋️', title: '躺平沙發馬鈴薯豬', stars: 1,
-    hint: '三項能力都低於 35，體重 45kg 以上',
-    test: s => s.int < 35 && s.str < 35 && s.cha < 35 && s.weight >= 45,
-    headline: '沙發馬鈴薯豬宣布「今年都不起床」　鄰居：「他其實很快樂」', quote: '人生的意義就是……再睡五分鐘。',
-    story: '你把沙發睡成了自己的形狀，遙控器就是你的權杖。雖然沒有什麼成就，但你笑得比誰都開心。' },
-  { id: 'hermit', emoji: '🍃', title: '山林隱士豬', stars: 1,
-    hint: '三項能力都低於 35，體重 45kg 以下',
-    test: s => s.int < 35 && s.str < 35 && s.cha < 35,
-    headline: '山林隱士豬歸隱　小鳥與松鼠都來串門子', quote: '我不是躲起來，我是在發呆。',
-    story: '你選擇遠離塵囂，每天看雲、數樹葉，自在得像一陣風。山裡的小動物都說，你是最好的聊天對象。' },
-  { id: 'teacher', emoji: '🍎', title: '豬豬小學名師', stars: 1,
-    hint: '智慧 40 以上，且為三項能力中最高',
-    test: s => s.int >= 40 && s.int >= s.str && s.int >= s.cha,
-    headline: '名師豬獲頒「年度最佳老師」　學生：「他的點心最好吃」', quote: '不會的題目，我們一起吃飽再想。',
-    story: '你把學到的知識教給小豬們，教室永遠充滿笑聲與餅乾香。畢業典禮那天，全班小豬一起把你拋向空中。' },
-  { id: 'guard', emoji: '🛡️', title: '牧場金牌保鑣豬', stars: 1,
-    hint: '力量 40 以上，且高過魅力',
-    test: s => s.str >= 40 && s.str >= s.cha,
-    headline: '金牌保鑣豬守護牧場　野狼聞風喪膽', quote: '有我在，沒有人可以偷吃飼料。',
-    story: '你的肌肉成了牧場最可靠的圍牆。夜裡野狼探頭一看，被你的背影嚇得連夜搬家。' },
-  { id: 'influencer', emoji: '📱', title: '人氣網紅豬', stars: 1,
-    hint: '魅力 40 以上',
-    test: s => s.cha >= 40,
-    headline: '人氣網紅豬粉絲破萬　一支「轉圈圈」影片爆紅', quote: '記得按讚、訂閱、再來一份松露！',
-    story: '你的一舉一動都被拍成短影音，轉圈圈的片段更被全牧場瘋傳。走在路上都有小雞跑來要簽名。' },
-  { id: 'default', emoji: '🌾', title: '平凡幸福小豬', stars: 1,
-    hint: '不上不下，過著剛剛好的日子',
-    test: () => true,
-    headline: '平凡小豬過著幸福日常　鄰居：「看到他就覺得安心」', quote: '今天的太陽很溫暖，真好。',
-    story: '你沒有成為傳奇，卻把每一天都過得踏實又開心。傍晚坐在籬笆邊看夕陽，你覺得，這樣就很好了。' },
-];
-function pickEnding(s) { return ENDINGS.find(e => e.test(s)); }
+// 結局資料、判定與計分都在 game-core.js（與排行榜伺服器共用）
 
 // 把數值變化套進狀態並做上下限控制，回傳「實際」變動量
 function applyDelta(s, d) {
@@ -1111,6 +1046,64 @@ function presentEvent(ev) {
   });
 }
 
+// ---------- 排行榜資料 ----------
+function loadLocalBoard() { try { const a = JSON.parse(localStorage.getItem(LB_KEY)); return Array.isArray(a) ? a : []; } catch (e) { return []; } }
+function saveLocalBoard(a) { try { localStorage.setItem(LB_KEY, JSON.stringify(a)); } catch (e) { /* 忽略 */ } }
+function getPlayerName() { try { return cleanName(localStorage.getItem(NAME_KEY) || ''); } catch (e) { return ''; } }
+function setPlayerName(n) { try { localStorage.setItem(NAME_KEY, n); } catch (e) { /* 忽略 */ } }
+function getDeviceId() {
+  try {
+    let id = localStorage.getItem(DEVICE_KEY);
+    if (!id || !/^[A-Za-z0-9_-]{16,64}$/.test(id)) {
+      const b = new Uint8Array(18); crypto.getRandomValues(b);
+      id = Array.from(b, x => x.toString(16).padStart(2, '0')).join('');
+      localStorage.setItem(DEVICE_KEY, id);
+    }
+    return id;
+  } catch (e) { return null; }
+}
+// 把這局成績記進本機排行榜（只留前 30 名），回傳這局的名次
+function addLocalScore(entry) {
+  const board = loadLocalBoard();
+  board.push(entry);
+  board.sort((a, b) => b.score - a.score || a.at - b.at);
+  if (board.length > 30) board.length = 30;
+  saveLocalBoard(board);
+  const i = board.findIndex(x => x.id === entry.id);
+  return i < 0 ? null : i + 1;
+}
+function localRankOf(id) { const i = loadLocalBoard().findIndex(x => x.id === id); return i < 0 ? null : i + 1; }
+function renameLocalRun(id, name) {
+  const board = loadLocalBoard(), x = board.find(r => r.id === id);
+  if (x) { x.name = name; saveLocalBoard(board); }
+}
+
+// ---------- 線上排行榜 ----------
+async function lbFetch(path, opt) {
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), 12000);
+  try {
+    const r = await fetch(LB_URL + path, Object.assign({ signal: ctrl.signal }, opt));
+    let data = null;
+    try { data = await r.json(); } catch (e) { /* 非 JSON */ }
+    if (!r.ok) throw new Error((data && data.error) || ('HTTP ' + r.status));
+    return data;
+  } catch (e) {
+    if (e.name === 'AbortError') throw new Error('連線逾時');
+    throw e;
+  } finally { clearTimeout(timer); }
+}
+const fetchOnlineBoard = () => lbFetch('/api/scores?limit=50');
+function submitOnline(name) {
+  const id = getDeviceId();
+  if (!id) return Promise.reject(new Error('無法取得裝置代碼（瀏覽器禁止儲存資料）'));
+  const s = state;
+  return lbFetch('/api/scores', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ deviceId: id, name, stats: { int: s.int, str: s.str, cha: s.cha, weight: s.weight, gold: s.gold, endingId: s.endingId } }),
+  });
+}
+
 // ---------- 結局 ----------
 async function finishGame() {
   const e = pickEnding(state);
@@ -1120,22 +1113,49 @@ async function finishGame() {
   book[e.id] = { count: ((book[e.id] && book[e.id].count) || 0) + 1, last: new Date().toISOString(), best: { int: state.int, str: state.str, cha: state.cha, weight: state.weight, gold: state.gold } };
   saveBook(book);
   state.firstUnlock = first;
+  // 計分並記入本機排行榜
+  const sc = calcScore(state, e);
+  state.score = sc;
+  state.runId = Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+  state.uploaded = null;
+  addLocalScore({ id: state.runId, name: getPlayerName() || '無名豬豬', score: sc.total, endingId: e.id, int: state.int, str: state.str, cha: state.cha, weight: state.weight, gold: state.gold, at: Date.now() });
   save(); renderAll();
   await showEnding();
 }
 async function showEnding() {
   const e = ENDINGS.find(x => x.id === state.endingId) || ENDINGS[ENDINGS.length - 1];
-  const loading = showModal({ title: `${e.emoji} 結局揭曉！`, html: '<div class="spinner"></div><p style="text-align:center">豬豬日報正在趕稿中…</p>' });
+  showModal({ title: `${e.emoji} 結局揭曉！`, html: '<div class="spinner"></div><p style="text-align:center">豬豬日報正在趕稿中…</p>' });
   if (!state.news) { state.news = await getNews(e); save(); }
   const n = state.news;
   const paras = String(n.article).split(/\n+/).filter(Boolean).map(p => `<p>${esc(p)}</p>`).join('');
   const s = state;
+  if (!s.score) s.score = calcScore(s, e);     // 舊存檔相容
+  const sc = s.score;
   const clone = $('pigSvg').cloneNode(true);
   clone.removeAttribute('id');
   clone.querySelectorAll('[id]').forEach(x => x.removeAttribute('id'));
   const book = loadBook();
   const unlocked = Object.keys(book).length;
+  const lrank = s.runId ? localRankOf(s.runId) : null;
+  const up = s.uploaded;
   closeModal();
+
+  const buttons = [];
+  if (LB_URL && !up) buttons.push({ text: '📤 上傳線上排行榜', cls: 'center primary', onClick: async el => {
+    const name = cleanName($('nameInput').value);
+    if (!name) { toast('先幫豬豬取個暱稱吧！'); $('nameInput').focus(); return; }
+    setPlayerName(name); renameLocalRun(s.runId, name);
+    el.disabled = true; el.textContent = '上傳中…';
+    try {
+      s.uploaded = await submitOnline(name); save();
+      toast(s.uploaded.newRecord ? `上傳成功！線上第 ${s.uploaded.rank} 名 🎉` : `上傳成功（未破你的最高分），目前第 ${s.uploaded.rank} 名`, 3600);
+      showEnding();
+    } catch (err) { el.disabled = false; el.textContent = '📤 上傳線上排行榜'; toast('上傳失敗：' + err.message, 4000); }
+  } });
+  buttons.push({ text: '🏆 排行榜', cls: 'center', onClick: () => showLeaderboard(true) });
+  buttons.push({ text: '📖 結局圖鑑', cls: 'center', onClick: () => showBook(true) });
+  buttons.push({ text: '🔄 重新開始', cls: `center ${LB_URL && !up ? '' : 'primary'}`, onClick: () => { closeModal(); restart(); } });
+
   const m = showModal({
     wide: true, row: true,
     title: `${e.emoji} 結局：${esc(e.title)}`,
@@ -1143,6 +1163,8 @@ async function showEnding() {
       ${s.firstUnlock ? '<p style="text-align:center;margin:0"><b style="color:#c23a30">🎉 新結局解鎖！</b></p>' : ''}
       <div class="endpig"></div>
       <div class="sumrow"><span>📘 智慧 ${s.int}</span><span>💪 力量 ${s.str}</span><span>💖 魅力 ${s.cha}</span><span>⚖️ ${s.weight}kg</span><span>🪙 ${s.gold}G</span></div>
+      <div class="scorebox">🏆 綜合分數 <b>${sc.total}</b>
+        <small>能力 ${sc.base} ＋ 豬豬幣 ${sc.goldPts} ＋ 結局稀有度 ${sc.endPts}${lrank ? `｜本機第 ${lrank} 名` : ''}${up ? `｜線上第 ${up.rank} 名` : ''}</small></div>
       <div class="news">
         <div class="mast">豬豬日報</div>
         <div class="meta"><span>豬曆第 30 天</span><span>${n.source === 'ai' ? '✨ Gemini 特約記者' : '本報編輯部'}</span><span>頭版</span></div>
@@ -1151,14 +1173,53 @@ async function showEnding() {
         <div class="body">${paras}</div>
         <div class="quote">「${esc(n.quote || e.quote)}」—— 受訪豬豬</div>
       </div>
-      <p class="small" style="text-align:center">已解鎖結局 ${unlocked} / ${ENDINGS.length}</p>`,
-    buttons: [
-      { text: '📖 結局圖鑑', cls: 'center', onClick: () => showBook(true) },
-      { text: '🔄 重新開始', cls: 'center primary', onClick: () => { closeModal(); restart(); } },
-    ],
+      <p style="margin:8px 0 0"><b>🐷 豬豬暱稱</b>（排行榜顯示用）</p>
+      <input class="field" id="nameInput" maxlength="${NAME_MAX}" autocomplete="off" placeholder="最多 ${NAME_MAX} 個字" value="${esc(getPlayerName())}" ${up ? 'disabled' : ''}>
+      <p class="small" style="text-align:center">已解鎖結局 ${unlocked} / ${ENDINGS.length}${LB_URL ? '' : '｜尚未設定線上排行榜，成績只會記在這台裝置'}</p>`,
+    buttons,
   });
   m.body.querySelector('.endpig').appendChild(clone);
+  // 暱稱改了就同步到本機排行榜這一局
+  const ni = $('nameInput');
+  if (ni && !up) ni.addEventListener('change', () => { const nm = cleanName(ni.value); if (nm) { setPlayerName(nm); renameLocalRun(s.runId, nm); } });
 }
+
+// ---------- 排行榜畫面 ----------
+function lbRows(list, mark) {
+  if (!list.length) return '<div class="lb-empty">還沒有任何成績，快去通關一次吧！🐷</div>';
+  const medal = r => (r === 1 ? '🥇' : r === 2 ? '🥈' : r === 3 ? '🥉' : r);
+  return `<table class="lb"><thead><tr><th>名次</th><th>豬豬</th><th class="r">分數</th></tr></thead><tbody>${list.map((x, i) => {
+    const e = ENDINGS.find(t => t.id === x.endingId);
+    const rank = x.rank || i + 1;
+    return `<tr class="${mark && mark === x.id ? 'me' : ''}"><td class="rk">${medal(rank)}</td>
+      <td class="nm">${esc(x.name)}<span class="sub">${e ? e.emoji + ' ' + esc(e.title) : ''}｜智${x.int} 力${x.str} 魅${x.cha}｜${x.weight}kg｜${x.gold}G</span></td>
+      <td class="r"><b>${x.score}</b></td></tr>`;
+  }).join('')}</tbody></table>`;
+}
+function showLeaderboard(fromEnding = false, tab) {
+  tab = tab || (LB_URL ? 'online' : 'local');
+  const m = showModal({
+    wide: true, dismiss: !fromEnding, row: true,
+    title: '🏆 豬豬排行榜',
+    html: `<div class="tabs"><button class="tab ${tab === 'local' ? 'on' : ''}" data-t="local">📱 本機</button><button class="tab ${tab === 'online' ? 'on' : ''}" data-t="online">🌐 線上</button></div>
+      <div id="lbBody"></div>
+      <p class="small" style="text-align:center">分數 ＝ 智慧＋力量＋魅力 ＋ 豬豬幣÷10（最多 100）＋ 結局稀有度（每顆星 40，隱藏結局再 +50）</p>`,
+    buttons: [{ text: fromEnding ? '← 回到結局' : '關閉', cls: 'center primary', onClick: () => { if (fromEnding && state.ended) showEnding(); else closeModal(); } }],
+  });
+  m.body.querySelectorAll('.tab').forEach(b => b.addEventListener('click', () => showLeaderboard(fromEnding, b.dataset.t)));
+  const box = m.body.querySelector('#lbBody');
+  if (tab === 'local') { box.innerHTML = lbRows(loadLocalBoard(), state && state.runId); return; }
+  if (!LB_URL) { box.innerHTML = '<div class="lb-empty">這個版本還沒有設定線上排行榜。<br><span class="small">管理員部署好排行榜伺服器後，在 config.js 填入網址即可開啟。</span></div>'; return; }
+  box.innerHTML = '<div class="spinner"></div>';
+  fetchOnlineBoard().then(d => {
+    if (!document.body.contains(box)) return;     // 使用者已切換或關閉
+    box.innerHTML = lbRows(Array.isArray(d.scores) ? d.scores : [], null);
+  }).catch(err => {
+    if (!document.body.contains(box)) return;
+    box.innerHTML = `<div class="lb-empty">讀取失敗：${esc(err.message)}<br><span class="small">請檢查網路後再試。</span></div>`;
+  });
+}
+
 function showBook(fromEnding = false) {
   const book = loadBook();
   const cards = ENDINGS.map(e => {
@@ -1224,6 +1285,7 @@ async function restart() {
 async function init() {
   state = loadState() || newState();
   buildStats(); renderAll();
+  $('btnRank').addEventListener('click', () => showLeaderboard(false));
   $('btnBook').addEventListener('click', () => showBook(false));
   $('btnSettings').addEventListener('click', showSettings);
   $('btnRestart').addEventListener('click', restart);

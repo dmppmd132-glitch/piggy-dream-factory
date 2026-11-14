@@ -1,8 +1,10 @@
 /* 豬豬夢工場 Service Worker：讓遊戲可離線開啟、可安裝到主畫面 */
-const CACHE = 'piggy-dream-factory-v1';
+const CACHE = 'piggy-dream-factory-v2';
 const ASSETS = [
   './',
   './index.html',
+  './game-core.js',
+  './config.js',
   './manifest.webmanifest',
   './icon.svg',
   './icons/icon-192.png',

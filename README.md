@@ -5,6 +5,7 @@
 - 純前端單檔遊戲（HTML / CSS / SVG / JavaScript），**不需要任何外部圖片或建置工具**
 - 可當成 **PWA** 安裝到手機／電腦主畫面，也能離線遊玩（Service Worker 快取）
 - 突發事件與結局報紙頭條由 **Gemini（`gemini-2.5-flash`）** 即時生成；沒有 API Key 或連線失敗時，自動改用內建內容
+- 🏆 **排行榜**：本機排行榜開箱即用；線上排行榜（Cloudflare Worker + D1）部署後在 `config.js` 填網址即可開啟
 
 ## 怎麼玩
 
@@ -32,6 +33,46 @@
 ### 17 種結局（含 1 個隱藏結局）
 豬豬大總統、銀河偶像豬、米其林三星主廚豬、傳奇屠龍騎士豬、諾貝爾豬博士、橫綱相撲豬、豬豬首富、優雅貴族豬、閃電賽跑豬、躺平沙發馬鈴薯豬、山林隱士豬……以及一個隱藏的「傳說中的全能豬」。
 通關後可在「📖 結局圖鑑」查看已解鎖的結局。
+
+## 🏆 排行榜
+
+**綜合分數** ＝ 智慧＋力量＋魅力 ＋ 豬豬幣÷10（最多 100 分）＋ 結局稀有度（每顆星 40 分，隱藏結局再 +50 分）。
+
+- **本機排行榜**：通關後自動記錄（保留前 30 名），存在這台裝置的瀏覽器，不需要任何設定。
+- **線上排行榜**：所有玩家共用，需要先部署 `worker/` 裡的伺服器（見下）。沒部署時，遊戲會自動隱藏上傳按鈕，其他功能不受影響。
+- 每位玩家（以匿名裝置代碼辨識）在線上只保留**最高分**一筆；暱稱最多 12 字。
+
+### 部署線上排行榜（Cloudflare 免費方案即可）
+
+需要 Node.js 與 Cloudflare 帳號。
+
+```bash
+cd worker
+npx wrangler login
+npx wrangler d1 create piggy-leaderboard        # 記下印出的 database_id，填進 wrangler.toml
+npx wrangler d1 execute piggy-leaderboard --remote --file=schema.sql
+# 編輯 wrangler.toml：database_id、ALLOWED_ORIGINS（填你的 GitHub Pages 網址，例如 https://<帳號>.github.io）
+npx wrangler deploy
+```
+
+部署完成會得到 `https://piggy-dream-factory-leaderboard.<帳號>.workers.dev`，把它填進專案根目錄的 `config.js`：
+
+```js
+window.PIG_CONFIG = { leaderboardUrl: 'https://piggy-dream-factory-leaderboard.<帳號>.workers.dev' };
+```
+
+再把修改後的 `config.js` 推上 GitHub 即可。
+
+### 關於防作弊（請先知道的限制）
+
+這是純前端遊戲，成績由玩家的瀏覽器送出，**無法做到真正防作弊**，有心人可以直接呼叫 API 送出任何「看起來合理」的數值。目前的防護只有：
+
+- 伺服器用與遊戲相同的規則（`game-core.js`）**重新計算結局與分數**，不信任前端傳來的分數；
+- 檢查每項數值的範圍、結局與數值是否相符；
+- 同一裝置兩次上傳至少間隔 20 秒、請求大小限制、只允許指定網站來源（CORS）；
+- 暱稱會清理，顯示時一律跳脫，避免被塞入 HTML。
+
+這些能擋掉亂填與隨手竄改，但擋不住用腳本送出「最完美成績」的人。若需要更嚴格，必須改成由伺服器模擬整局遊戲（記錄每天的行動並重算），這會是較大的改動。
 
 ## 開啟 AI 事件（選填）
 
@@ -65,7 +106,10 @@ python3 -m http.server 8080
 ## 專案結構
 
 ```
-index.html              遊戲本體（畫面、SVG 豬豬、遊戲邏輯、Gemini 串接）
+index.html              遊戲本體（畫面、SVG 豬豬、遊戲邏輯、Gemini 串接、排行榜介面）
+game-core.js            共用核心：結局判定、計分、成績驗證（遊戲與伺服器共用）
+config.js               設定檔（線上排行榜網址）
+worker/                 線上排行榜伺服器（Cloudflare Worker + D1）
 manifest.webmanifest    PWA 設定
 sw.js                   Service Worker（離線快取）
 icon.svg                向量圖示
