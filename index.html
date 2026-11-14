@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>豬豬夢工場：30天豬生逆襲</title>
-<meta name="description" content="30 天把一隻普通小粉豬養成傳奇豬豬！繁體中文養成遊戲，含心情、NPC 好感、道具商店、每日固定挑戰、天氣與成就。">
+<meta name="description" content="30 天把一隻普通小粉豬養成傳奇豬豬！繁體中文養成遊戲，含 7 種豬豬個性、心情、NPC 好感、道具商店、每日固定挑戰、天氣與成就。">
 <meta name="theme-color" content="#8b5a2b">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" href="icon.svg" type="image/svg+xml">
@@ -80,6 +80,26 @@ button{font-family:inherit}
 .relations .relfill{height:100%;background:#f06fa0;transition:width .35s}
 .mode-note{font-size:.75rem;color:#7a6040;text-align:center;margin:6px 0}
 .shop-list{display:grid;gap:8px}.shop-card{display:grid;grid-template-columns:1fr auto;gap:6px;align-items:center;padding:8px;border:2px solid #7f5329;border-radius:8px;background:#fffaf0}.shop-card b{display:block}.shop-card .small{display:block}.shop-actions{display:flex;gap:5px;flex-wrap:wrap;justify-content:flex-end}.shop-actions .mbtn{font-size:.82rem;padding:5px 8px}
+/* ===== 豬豬個性 ===== */
+.badge.pers{background:#ffe6f1;cursor:pointer}
+.badge.pers:hover{filter:brightness(1.03)}
+.pers-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(158px,1fr));gap:8px;margin:8px 0 10px}
+.pers-card{
+  display:flex;flex-direction:column;gap:3px;text-align:left;padding:8px;border:3px solid #5e3b1b;border-radius:8px;
+  background:#fffaf0;color:var(--ink);cursor:pointer;box-shadow:0 3px 0 #5e3b1b;font-size:.8rem;line-height:1.35;
+  transition:transform .06s,box-shadow .06s,background .15s;
+}
+.pers-card:hover{background:#fff}
+.pers-card:active{transform:translateY(3px);box-shadow:0 1px 0 #5e3b1b}
+.pers-card .e{font-size:1.7rem;line-height:1.1}
+.pers-card .t{font-weight:900;font-size:.95rem}
+.pers-card .tag{font-size:.72rem;color:#7a6040}
+.pers-card .pro{font-size:.74rem;color:#2f8a1a;font-weight:700}
+.pers-card .con{font-size:.74rem;color:#c23a30;font-weight:700}
+.pers-card.on{background:#ffe9a8;border-color:#c25a00;box-shadow:0 3px 0 #c25a00,0 0 0 3px rgba(255,217,90,.6)}
+.pers-card .collected{font-size:.7rem;color:#8a6a3a}
+.pers-detail{margin:6px 0 0;padding:8px 10px;border:2px dashed #9b7540;border-radius:8px;background:#fff8dc;font-size:.82rem}
+.pers-detail b{display:block;margin-bottom:2px}
 .stat .lbl{font-weight:800;font-size:.9rem;white-space:nowrap}
 .bar{position:relative;height:16px;background:#d9c79a;border:2px solid #5e3b1b;border-radius:5px;overflow:hidden}
 .fill{position:relative;height:100%;width:0;transition:width .5s ease,background .3s}
@@ -254,6 +274,7 @@ body.busy .act{pointer-events:none;opacity:.6}
       <div class="stage-view">
         <div class="badges">
           <div class="badge" id="modeBadge">🌱 一般養成</div>
+          <div class="badge pers" id="persBadge" role="button" tabindex="0" title="點我看豬豬個性">🐷 個性</div>
           <div class="badge">📅 第 <span id="dayNum">1</span> / 30 天</div>
           <div class="badge" id="weatherBadge" aria-live="polite"><span id="weatherNum">☀️ 晴朗</span></div>
           <div class="badge">🪙 <span id="goldNum">100</span> G</div>
@@ -435,6 +456,7 @@ body.busy .act{pointer-events:none;opacity:.6}
 
 <script src="config.js"></script>
 <script src="game-core.js"></script>
+<script src="personalities.js"></script>
 <script>
 'use strict';
 /* =====================================================================
@@ -461,6 +483,11 @@ const LB_URL = ((window.PIG_CONFIG && window.PIG_CONFIG.leaderboardUrl) || '').r
 
 // 各數值的上下限
 const { OMNI_MIN, ENDINGS, pickEnding, calcScore, cleanName, NAME_MAX } = PigCore;
+const PERSONALITY_KEY = 'pdf_personalities_v1';   // 已通關過的個性（收集用）
+const PERSONALITIES = PigPersonalities.LIST;
+const DEFAULT_PERSONALITY = PigPersonalities.DEFAULT_ID;
+// 每日挑戰固定使用 NEUTRAL：所有倍率為 1，維持與舊版完全相同的起始條件
+const getPersonality = s => (s && s.mode === 'daily' ? PigPersonalities.NEUTRAL : PigPersonalities.byId(s && s.personality));
 const KEYS = ['stamina', 'int', 'str', 'cha', 'weight', 'gold', 'mood'];
 const LIMITS = { stamina: [0, 100], int: [0, 100], str: [0, 100], cha: [0, 100], weight: [10, 200], gold: [0, 99999], mood: [0, 100] };
 const LABEL = { stamina: '體力', int: '智慧', str: '力量', cha: '魅力', weight: '體重', gold: '豬豬幣', mood: '心情' };
@@ -532,6 +559,7 @@ const ACHIEVEMENTS = [
   { id: 'all_weather', emoji: '🌦️', title: '天氣觀察家', desc: '一局遇見晴朗、多雲、下雨與微風', bonus: { str: 5 }, test: s => new Set(s.weatherSeen || []).size >= Object.keys(WEATHER).length },
   { id: 'event_lover', emoji: '📮', title: '牧場交際王', desc: '一局遇見至少 6 種不同的突發事件', bonus: { int: 5 }, test: s => new Set(s.eventTitles || []).size >= 6 },
   { id: 'rich_pig', emoji: '💰', title: '小小富豬', desc: '通關時保有至少 300G', bonus: { cha: 5 }, test: s => s.gold >= 300 },
+  { id: 'persona_3', emoji: '🎭', title: '千面豬生', desc: '用 3 種不同個性各通關一次', bonus: { cha: 5 }, test: s => (s.personalityCleared || 0) >= 3 },
 ];
 
 // 結局資料、判定與計分都在 game-core.js（與排行榜伺服器共用）
@@ -553,18 +581,33 @@ function newState(options = {}) {
   const challengeDate = mode === 'daily' ? options.challengeDate : null;
   const seed = mode === 'daily' ? ((Number(options.seed) >>> 0) || PigCore.dailySeed(challengeDate) || 1) : null;
   const bonus = mode === 'daily' ? { int: 0, str: 0, cha: 0 } : getAchievementMeta().bonuses;
+  const personality = PigPersonalities.has(options.personality)
+    ? options.personality
+    : (mode === 'daily' ? DEFAULT_PERSONALITY : null);
   const s = {
     v: 1, mode, challengeDate, seed, rngState: seed, dailyEventOrder: [], dailyEventIndex: 0,
+    personality,
     day: 1, stamina: 100, int: 10 + bonus.int, str: 10 + bonus.str, cha: 10 + bonus.cha, weight: 30, gold: 100, mood: 70,
     lastActionId: null, sameActionStreak: 0, relationships: { teacher: 0, truffle: 0 }, inventory: {},
     sickDays: 0, nextEventDay: mode === 'daily' ? 3 : 0, hit: {}, eventTitles: [], log: [],
     pendingEvent: null, ended: false, endingId: null, news: null, hospitalCount: 0, aiEvents: 0,
     weather: null, weatherSeen: [], noSleepStreak: 0, bestNoSleepStreak: 0, newAchievements: [],
   };
+  // 個性的開局加成與專屬道具（每日挑戰不套用，維持全球一致）
+  if (mode !== 'daily' && personality) {
+    const p = getPersonality(s);
+    for (const [k, v] of Object.entries(p.startBonus || {})) {
+      if (k in LIMITS) s[k] = clamp(s[k] + v, LIMITS[k][0], LIMITS[k][1]);
+    }
+    for (const [id, n] of Object.entries(p.startItems || {})) s.inventory[id] = (s.inventory[id] || 0) + n;
+  }
   if (mode === 'daily') s.dailyEventOrder = seededShuffle(LOCAL_EVENTS.map(e => e.title), seed);
   s.weather = rollWeather(s);
   s.weatherSeen = [s.weather];
-  if (mode !== 'daily') s.nextEventDay = rand(3, 4, s);
+  if (mode !== 'daily') {
+    const span = getPersonality(s).eventInterval || [3, 4];
+    s.nextEventDay = rand(span[0], span[1], s);
+  }
   return s;
 }
 
@@ -576,29 +619,44 @@ function weatherAction(a, weather = state && state.weather) {
 }
 function isWeatherBlocked(a, weather = state && state.weather) { return a.id === 'gym' && weather === 'rainy'; }
 
-// 檢查這一步能不能做：金幣是否足夠
-function canAfford(s, a) { return s.gold + (a.delta.gold || 0) >= 0; }
-// 做了之後體力會不會歸零（歸零會昏倒）
-function willCollapse(s, a) { return s.stamina + (a.delta.stamina || 0) <= 0; }
-
-// 執行行動（純邏輯）：體力偏低或病後虛弱時，成長打七折
-function runAction(s, a) {
+// 個性換算後的「確定性」增減（不含隨機成長），供按鈕預覽與判斷使用
+function effectiveDelta(s, a) {
+  const p = getPersonality(s);
   const d = Object.assign({}, a.delta);
+  if (d.stamina) d.stamina = PigPersonalities.scaleStamina(p, d.stamina);
+  if (d.gold) d.gold = PigPersonalities.scaleGold(p, d.gold);
+  if (d.weight) d.weight = PigPersonalities.scaleWeight(p, d.weight);
+  const bonus = (p.actionBonus || {})[a.id];
+  if (bonus) for (const [k, v] of Object.entries(bonus)) d[k] = (d[k] || 0) + v;
+  return d;
+}
+// 檢查這一步能不能做：金幣是否足夠
+function canAfford(s, a) { return s.gold + (effectiveDelta(s, a).gold || 0) >= 0; }
+// 做了之後體力會不會歸零（歸零會昏倒）
+function willCollapse(s, a) { return s.stamina + (effectiveDelta(s, a).stamina || 0) <= 0; }
+
+// 執行行動（純邏輯）：體力偏低或病後虛弱時，成長打七折；個性再調整消耗與成長
+function runAction(s, a) {
+  const p = getPersonality(s);
+  const d = effectiveDelta(s, a);
   if (!Number.isFinite(s.mood)) s.mood = 70;
   const repeated = s.lastActionId === a.id;
   const actionMood = { sleep: 10, feast: 7, work: -3 }[a.id] || 0;
-  d.mood = (d.mood || 0) + (repeated ? -12 : 5) + actionMood;
+  // repeatTolerance 越小＝越能忍受重複（慵懶小豬）
+  const repeatMood = repeated ? Math.round(-12 * (Number(p.repeatTolerance) || 1)) : 5;
+  d.mood = (d.mood || 0) + repeatMood + actionMood + (Number(p.moodPerAction) || 0);
   let weak = false, lowMood = s.mood < 25;
   if (a.main) {
     let g = rand(a.range[0], a.range[1], s);
     if (s.stamina < 25 || s.sickDays > 0) { g = Math.max(1, Math.round(g * 0.7)); weak = true; }
     if (lowMood) { g = Math.max(1, Math.round(g * 0.75)); weak = true; }
     else if (s.mood >= 80) g += 1;
+    g = Math.max(1, Math.round(g * PigPersonalities.growthFor(p, a.main)));
     d[a.main] = (d[a.main] || 0) + g;
   }
   s.sameActionStreak = repeated ? (s.sameActionStreak || 1) + 1 : 1;
   s.lastActionId = a.id;
-  return { real: applyDelta(s, d), weak, lowMood };
+  return { real: applyDelta(s, d), weak, lowMood, personality: p };
 }
 
 // 昏倒住院：扣醫藥費、恢復體力、病後虛弱
@@ -847,6 +905,12 @@ function pickLocalEvent(s, tag) {
   const thisRunFresh = LOCAL_EVENTS.filter(e => !s.eventTitles.includes(e.title));
   const pool = fresh.length ? fresh : (thisRunFresh.length ? thisRunFresh : LOCAL_EVENTS);
   const tagged = tag ? pool.filter(e => e.tag === tag) : [];
+  // 個性偏好：沒有指定標籤時，有 55% 機率優先抽到符合個性主題的事件
+  const affinity = getPersonality(s).eventAffinity || [];
+  if (!tagged.length && affinity.length) {
+    const preferred = pool.filter(e => affinity.includes(e.tag));
+    if (preferred.length && randomFor(s) < 0.55) return JSON.parse(JSON.stringify(pick(preferred, s)));
+  }
   return JSON.parse(JSON.stringify(pick(tagged.length ? tagged : pool)));
 }
 
@@ -904,6 +968,10 @@ function loadState(key = SAVE_KEY) {
     merged.mode = merged.mode === 'daily' ? 'daily' : 'normal';
     if (!Number.isFinite(merged.mood)) merged.mood = 70;
     if (!Number.isFinite(merged.sameActionStreak)) merged.sameActionStreak = 0;
+    // 個性：舊存檔沒有這個欄位，一般養成留 null（下一次開新局時選），每日挑戰固定標準豬豬
+    merged.personality = PigPersonalities.has(merged.personality)
+      ? merged.personality
+      : (merged.mode === 'daily' ? DEFAULT_PERSONALITY : null);
     merged.lastActionId = typeof merged.lastActionId === 'string' ? merged.lastActionId : null;
     merged.relationships = Object.assign({ teacher: 0, truffle: 0 }, merged.relationships && typeof merged.relationships === 'object' ? merged.relationships : {});
     for (const k of Object.keys(merged.relationships)) merged.relationships[k] = clamp(Number(merged.relationships[k]) || 0, 0, 100);
@@ -1112,6 +1180,12 @@ function renderRelationships() {
     return `<div class="relrow"><span>${key === 'teacher' ? '🐮' : '🍄'} ${name}</span><span>${value} / 100</span></div><div class="relbar"><div class="relfill" style="width:${value}%"></div></div>`;
   }).join('');
   $('modeBadge').textContent = state.mode === 'daily' ? `📅 每日挑戰 ${state.challengeDate || ''} UTC` : '🌱 一般養成';
+  const p = getPersonality(state);
+  const badge = $('persBadge');
+  if (badge) {
+    badge.textContent = `${p.emoji} ${p.name}`;
+    badge.title = `${p.tagline}｜點我看豬豬個性`;
+  }
 }
 function renderStats() {
   const s = state;
@@ -1151,10 +1225,10 @@ function flash(real) {
 }
 
 // ---------- 行程按鈕 ----------
-function actionChips(a) {
+function actionChips(a, delta = a.delta) {
   const chips = [];
   if (a.main) chips.push(`<span class="chip up">${LABEL[a.main]} ＋＋</span>`);
-  for (const [k, v] of Object.entries(a.delta)) chips.push(`<span class="chip ${v > 0 ? 'up' : 'down'}">${LABEL[k]} ${fmtVal(k, v)}</span>`);
+  for (const [k, v] of Object.entries(delta)) chips.push(`<span class="chip ${v > 0 ? 'up' : 'down'}">${LABEL[k]} ${fmtVal(k, v)}</span>`);
   return chips.join('');
 }
 function renderActions() {
@@ -1182,22 +1256,30 @@ function renderActions() {
     note.hidden = !weatherBlocked;
     note.textContent = weatherBlocked ? '🌧️ 下雨天，健身房休館' : '';
     const chips = b.querySelector('.chips');
-    chips.innerHTML = actionChips(weatherAction(a, state.weather));
+    const shown = weatherAction(a, state.weather);
+    chips.innerHTML = actionChips(shown, effectiveDelta(state, shown));
   });
 }
 function shopMarkup() {
-  return `<p class="small">用豬豬幣購買一次性道具。背包 ${SHOP_ITEMS.reduce((n, i) => n + ((state.inventory || {})[i.id] || 0), 0)} 件；每日挑戰也可使用商店，但所有玩家起始狀態一致。</p><div class="shop-list">${SHOP_ITEMS.map(item => {
+  const p = getPersonality(state);
+  const priceNote = Math.abs(p.spend - 1) < 0.01 ? '' : `（個性價 ${p.spend < 1 ? '折扣' : '加成'} ${Math.round(Math.abs(p.spend - 1) * 100)}%）`;
+  return `<p class="small">用豬豬幣購買一次性道具。背包 ${SHOP_ITEMS.reduce((n, i) => n + ((state.inventory || {})[i.id] || 0), 0)} 件；每日挑戰也可使用商店，但所有玩家起始狀態一致。${priceNote ? `<br>${esc(p.emoji)} ${esc(p.name)}：${esc(priceNote)}` : ''}</p><div class="shop-list">${SHOP_ITEMS.map(item => {
     const count = (state.inventory || {})[item.id] || 0;
-    return `<div class="shop-card"><div><b>${item.emoji} ${esc(item.name)}｜${item.price}G</b><span class="small">${esc(item.desc)}｜持有 ${count}</span></div><div class="shop-actions"><button class="mbtn center" data-shop-buy="${item.id}" ${state.ended || state.gold < item.price ? 'disabled' : ''}>購買</button><button class="mbtn center primary" data-shop-use="${item.id}" ${state.ended || count < 1 || state.pendingEvent ? 'disabled' : ''}>使用</button></div></div>`;
+    const price = shopPrice(item);
+    return `<div class="shop-card"><div><b>${item.emoji} ${esc(item.name)}｜${price}G</b><span class="small">${esc(item.desc)}｜持有 ${count}${price !== item.price ? `｜原價 ${item.price}G` : ''}</span></div><div class="shop-actions"><button class="mbtn center" data-shop-buy="${item.id}" ${state.ended || state.gold < price ? 'disabled' : ''}>購買</button><button class="mbtn center primary" data-shop-use="${item.id}" ${state.ended || count < 1 || state.pendingEvent ? 'disabled' : ''}>使用</button></div></div>`;
   }).join('')}</div>`;
+}
+function shopPrice(item, s = state) {
+  return Math.max(1, Math.round(item.price * getPersonality(s).spend));
 }
 function showShop() {
   const m = showModal({ wide: true, title: '🛍️ 豬豬道具商店', html: shopMarkup(), dismiss: true, buttons: [{ text: '關閉', cls: 'center primary', onClick: closeModal }] });
   const bind = () => {
     m.body.querySelectorAll('[data-shop-buy]').forEach(b => b.addEventListener('click', () => {
       const item = SHOP_ITEMS.find(x => x.id === b.dataset.shopBuy);
-      if (!item || state.ended || state.gold < item.price) { toast('豬豬幣不夠，先去打工吧！'); return; }
-      applyDelta(state, { gold: -item.price });
+      const price = item ? shopPrice(item) : 0;
+      if (!item || state.ended || state.gold < price) { toast('豬豬幣不夠，先去打工吧！'); return; }
+      applyDelta(state, { gold: -price });
       state.inventory[item.id] = (state.inventory[item.id] || 0) + 1;
       adjustRelationships(state, { truffle: 1 });
       save(); renderAll(); toast(`買到 ${item.name}！松露攤老闆好感 +1`);
@@ -1279,7 +1361,8 @@ async function onAction(id) {
 
   const trig = checkEventTrigger(state);
   if (trig) {
-    state.nextEventDay = state.mode === 'daily' ? state.day + 3 : state.day + rand(3, 4, state);
+    const span = getPersonality(state).eventInterval || [3, 4];
+    state.nextEventDay = state.mode === 'daily' ? state.day + 3 : state.day + rand(span[0], span[1], state);
     save();
     await runEvent(trig);
   }
@@ -1320,7 +1403,8 @@ async function callGemini(prompt) {
   throw lastErr;
 }
 function stateBrief(s) {
-  return `第${Math.min(s.day, TOTAL_DAYS)}天／共30天；體力${s.stamina}/100、智慧${s.int}、力量${s.str}、魅力${s.cha}、體重${s.weight}kg、豬豬幣${s.gold}G`;
+  const p = getPersonality(s);
+  return `第${Math.min(s.day, TOTAL_DAYS)}天／共30天；體力${s.stamina}/100、智慧${s.int}、力量${s.str}、魅力${s.cha}、體重${s.weight}kg、豬豬幣${s.gold}G；個性：${p.name}（${p.tagline}）`;
 }
 function aiFail(e) {
   if (!aiWarned && e && e.message !== 'NO_KEY') { aiWarned = true; toast('AI 連線失敗，改用內建內容（請檢查 API Key 與網路）', 3600); }
@@ -1395,7 +1479,7 @@ function presentEvent(ev) {
         text: `${i === 0 ? '🅰️' : '🅱️'} ${esc(c.text)}`,
         onClick: () => {
           if (c.requires && (Number(state.relationships && state.relationships[c.requires.npc]) || 0) < c.requires.min) { toast(`${RELATION_NAMES[c.requires.npc] || 'NPC'} 好感度需達 ${c.requires.min} 才能選這個選項`); return; }
-          const real = applyDelta(state, c.effects);
+          const real = applyDelta(state, PigPersonalities.scaleEventEffects(getPersonality(state), c.effects));
           adjustRelationships(state, c.relationship);
           if (state.stamina < 1) { real.stamina = (real.stamina || 0) + (1 - state.stamina); state.stamina = 1; }
           state.eventTitles.push(ev.title);
@@ -1484,6 +1568,13 @@ async function finishGame() {
   state.ended = true; state.endingId = e.id;
   const book = loadBook();
   const first = !book[e.id];
+  if (state.mode !== 'daily') {
+    const pb = loadPersonaBook();
+    const key = PigPersonalities.has(state.personality) ? state.personality : DEFAULT_PERSONALITY;
+    pb[key] = { count: ((pb[key] && pb[key].count) || 0) + 1, last: new Date().toISOString() };
+    savePersonaBook(pb);
+    state.personalityCleared = Object.keys(pb).filter(id => PigPersonalities.has(id)).length;
+  }
   state.newAchievements = state.mode === 'daily' ? [] : unlockAchievements(state);
   state.permanentBonus = getAchievementMeta().bonuses;
   if (first) feedback('ending');
@@ -1544,7 +1635,7 @@ async function showEnding() {
       ${s.firstUnlock ? '<p style="text-align:center;margin:0"><b style="color:#c23a30">🎉 新結局解鎖！</b></p>' : ''}
       ${newAch.length ? `<div class="scorebox">🏅 本局新成就：${newAch.map(a => `${a.emoji} ${esc(a.title)}`).join('、')}<small>永久加成已記錄，重新開始後生效</small></div>` : ''}
       <div class="endpig"></div>
-      <div class="sumrow"><span>📘 智慧 ${s.int}</span><span>💪 力量 ${s.str}</span><span>💖 魅力 ${s.cha}</span><span>⚖️ ${s.weight}kg</span><span>🪙 ${s.gold}G</span></div>
+      <div class="sumrow"><span>📘 智慧 ${s.int}</span><span>💪 力量 ${s.str}</span><span>💖 魅力 ${s.cha}</span><span>⚖️ ${s.weight}kg</span><span>🪙 ${s.gold}G</span><span>🎭 ${esc(getPersonality(s).name)}</span></div>
       <div class="scorebox">🏆 綜合分數 <b>${sc.total}</b>
         <small>能力 ${sc.base} ＋ 豬豬幣 ${sc.goldPts} ＋ 結局稀有度 ${sc.endPts}${lrank ? `｜本機第 ${lrank} 名` : ''}${up ? (s.mode === 'daily' ? `｜每日第 ${up.dailyRank} 名｜總榜第 ${up.rank} 名` : `｜線上第 ${up.rank} 名`) : ''}</small></div>
       <div class="news">
@@ -1611,6 +1702,7 @@ function achievementProgress(a, s) {
   if (a.id === 'all_weather') return `遇見 ${new Set(s.weatherSeen || []).size} / ${Object.keys(WEATHER).length} 種天氣`;
   if (a.id === 'event_lover') return `本局遇見 ${new Set(s.eventTitles || []).size} / 6 種事件`;
   if (a.id === 'rich_pig') return `目前 ${s.gold} / 300G`;
+  if (a.id === 'persona_3') return `已用 ${Math.min(3, (s && s.personalityCleared) || 0)} / 3 種個性通關`;
   return '';
 }
 function showAchievements(fromEnding = false) {
@@ -1645,6 +1737,72 @@ function showBook(fromEnding = false) {
 }
 
 // ---------- 設定／說明／重新開始 ----------
+// ---------- 豬豬個性 ----------
+function loadPersonaBook() {
+  try {
+    const b = JSON.parse(localStorage.getItem(PERSONALITY_KEY) || '{}');
+    return b && typeof b === 'object' ? b : {};
+  } catch (e) { return {}; }
+}
+function savePersonaBook(b) { try { localStorage.setItem(PERSONALITY_KEY, JSON.stringify(b)); } catch (e) { /* 忽略 */ } }
+function personalityDetailHtml(p) {
+  return `<b>${p.emoji} ${esc(p.name)}</b>${esc(p.desc)}
+    <div style="margin-top:4px"><span style="color:#2f8a1a">👍 ${esc(p.pros.join('、'))}</span></div>
+    <div><span style="color:#c23a30">⚠️ ${esc(p.cons.join('、'))}</span></div>
+    <div style="margin-top:4px">成長倍率：${esc(PigPersonalities.growthLabel(p))}</div>`;
+}
+// 回傳 Promise<個性 id>；allowCancel 時取消回傳 null
+function pickPersonality({ current = null, allowCancel = false, firstRun = false } = {}) {
+  return new Promise(resolve => {
+    let selected = PigPersonalities.has(current) ? current : DEFAULT_PERSONALITY;
+    const book = loadPersonaBook();
+    const collected = Object.keys(book).filter(id => PigPersonalities.has(id)).length;
+    const card = p => `<button type="button" class="pers-card ${p.id === selected ? 'on' : ''}" data-pers="${p.id}" aria-pressed="${p.id === selected}">
+        <span class="e">${p.emoji}</span>
+        <span class="t">${esc(p.name)}</span>
+        <span class="tag">${esc(p.tagline)}</span>
+        <span class="pro">＋ ${esc(p.pros[0])}</span>
+        <span class="con">－ ${esc(p.cons[0])}</span>
+        ${book[p.id] ? `<span class="collected">已通關 ${book[p.id].count} 次</span>` : ''}
+      </button>`;
+    const m = showModal({
+      wide: true, row: true,
+      title: firstRun ? '🐷 選一種豬豬個性' : '🎭 下一局要當哪種豬？',
+      html: `<p class="small">個性會改變能力成長、體力消耗、收入與突發事件偏好。之後想換，只要按「🔄 重來」就能重新選。</p>
+        <div class="pers-grid" id="persGrid">${PERSONALITIES.map(card).join('')}</div>
+        <div class="pers-detail" id="persDetail">${personalityDetailHtml(PigPersonalities.byId(selected))}</div>
+        <p class="small">已通關過的個性：${collected} / ${PERSONALITIES.length}（用過的個性會記錄在裝置上）</p>`,
+      buttons: [
+        ...(allowCancel ? [{ text: '取消', cls: 'center', onClick: () => { closeModal(); resolve(null); } }] : []),
+        { text: '🎲 隨機選', cls: 'center', onClick: () => {
+          selected = pick(PERSONALITIES.filter(p => p.id !== selected)).id;
+          refresh();
+        } },
+        { text: '就這隻，開始！', cls: 'center primary', onClick: () => { closeModal(); resolve(selected); } },
+      ],
+    });
+    const refresh = () => {
+      m.body.querySelectorAll('[data-pers]').forEach(b => {
+        const on = b.dataset.pers === selected;
+        b.classList.toggle('on', on);
+        b.setAttribute('aria-pressed', String(on));
+      });
+      m.body.querySelector('#persDetail').innerHTML = personalityDetailHtml(PigPersonalities.byId(selected));
+    };
+    m.body.querySelectorAll('[data-pers]').forEach(b => b.addEventListener('click', () => { selected = b.dataset.pers; refresh(); }));
+  });
+}
+function showPersonalityInfo() {
+  const p = getPersonality(state);
+  const daily = state && state.mode === 'daily';
+  showModal({
+    title: '🎭 豬豬個性', dismiss: true,
+    html: `<div class="big">${p.emoji}</div><div class="pers-detail">${personalityDetailHtml(p)}</div>
+      ${daily ? '<p class="small">📅 每日挑戰固定使用「標準豬豬」，所有玩家在同一組種子下競爭，因此不套用個性加成。</p>' : '<p class="small">想換個性嗎？按「🔄 重來」重新選擇，結局圖鑑與成就都會保留。</p>'}`,
+    buttons: [{ text: '關閉', cls: 'center primary', onClick: closeModal }],
+  });
+}
+
 function showSettings() {
   const hasKey = !!getKey();
   const iosHint = /iphone|ipad|ipod/i.test(navigator.userAgent) ? '<p class="small">📱 iPhone / iPad：在 Safari 點「分享」→「加入主畫面」即可安裝。</p>' : '';
@@ -1695,21 +1853,45 @@ async function startDailyChallenge() {
   save(); closeModal(); renderAll(); say('今日每日挑戰，全球同一個固定事件順序！'); showIntro('daily');
 }
 function startNormalChallenge() {
+  return startNormal();
+}
+async function startNormal() {
   if (busyFlag) return;
-  state = loadState(SAVE_KEY) || newState();
-  save(); closeModal(); renderAll(); say('一般養成，照你的節奏慢慢培育！');
-  if (state.ended) showEnding(); else showIntro('normal');
+  const saved = loadState(SAVE_KEY);
+  if (saved && !saved.ended) {
+    state = saved;
+    if (!PigPersonalities.has(state.personality)) {
+      state.personality = DEFAULT_PERSONALITY;
+      toast('舊存檔已套用預設個性「平凡小豬」，按「🔄 重來」即可重新選擇。', 3800);
+    }
+    save(); closeModal(); renderAll(); say('一般養成，照你的節奏慢慢培育！');
+    showIntro('normal');
+    return;
+  }
+  if (saved && saved.ended) {
+    state = saved; save(); closeModal(); renderAll();
+    await showEnding();
+    return;
+  }
+  const id = await pickPersonality({ firstRun: true });
+  if (!id) return;
+  state = newState({ personality: id });
+  save(); closeModal(); renderAll();
+  say(`${getPersonality(state).name}的豬生，開始！`);
+  showIntro('normal');
 }
 function showIntro(mode = (state && state.mode) || 'normal') {
   const daily = mode === 'daily';
+  const p = getPersonality(state);
   showModal({
     row: true, title: daily ? '📅 每日固定挑戰' : '🐷 歡迎來到豬豬夢工場！',
     html: `<div class="big">🌾🐖🌾</div>
       <p>你有 <b>30 天</b>，要把這隻普通的小粉豬養成<b>獨當一面的傳奇豬豬</b>！</p>
       <p>每天選 <b>1 個行動</b>：讀書、健身、練儀態、大吃大喝、打工，或睡覺回血。體力歸零會昏倒住院，記得量力而為。</p>
       <p>途中會遇到<b>突發事件</b>，你的選擇會影響數值。第 30 天結束後，依最終數值解鎖專屬結局與報紙頭條！</p>
+      ${daily ? '' : `<p class="scorebox">${p.emoji} 本局個性：${esc(p.name)}<small>${esc(p.tagline)}｜${esc(p.pros.join('、'))}</small></p>`}
       <p class="small">🏆 一共有 ${ENDINGS.length} 種結局等你收集。內建事件共 ${LOCAL_EVENTS.length} 則；每天的天氣可能改變行程選擇與收益。</p>
-      ${daily ? `<p class="scorebox">🌍 ${state.challengeDate} UTC 固定挑戰<small>每日種子、天氣、能力成長與事件順序固定；不套用永久成就加成。事件固定使用內建內容，不受玩家 API Key 影響。</small></p>` : `<p class="small">🏅 永久加成：智慧 +${getAchievementMeta().bonuses.int}、力量 +${getAchievementMeta().bonuses.str}、魅力 +${getAchievementMeta().bonuses.cha}。解鎖成就後，下一局就能帶著加成出發！</p>`}`,
+      ${daily ? `<p class="scorebox">🌍 ${state.challengeDate} UTC 固定挑戰<small>每日種子、天氣、能力成長與事件順序固定；不套用永久成就加成，個性固定為「標準豬豬」。事件固定使用內建內容，不受玩家 API Key 影響。</small></p>` : `<p class="small">🏅 永久加成：智慧 +${getAchievementMeta().bonuses.int}、力量 +${getAchievementMeta().bonuses.str}、魅力 +${getAchievementMeta().bonuses.cha}。解鎖成就後，下一局就能帶著加成出發！</p>`}`,
     buttons: [{ text: daily ? '開始今日挑戰 ▶' : '開始一般養成 ▶', cls: 'center primary', onClick: () => { closeModal(); say(daily ? '固定事件順序已鎖定，開始每日挑戰！' : '今天要做什麼呢？'); } }, { text: daily ? '🌱 切回一般養成' : '📅 改玩每日挑戰', cls: 'center', onClick: () => daily ? startNormalChallenge() : startDailyChallenge() }],
   });
 }
@@ -1719,16 +1901,36 @@ async function restart() {
     const ok = await confirmBox('🔄 重新開始？', '目前的養成進度會消失，但<b>結局圖鑑與永久成就加成</b>會保留。', '重新開始', '取消');
     if (!ok) return;
   }
-  state = state.mode === 'daily'
-    ? newState({ mode: 'daily', challengeDate: state.challengeDate, seed: state.seed })
-    : newState();
+  if (state.mode === 'daily') {
+    state = newState({ mode: 'daily', challengeDate: state.challengeDate, seed: state.seed });
+  } else {
+    const id = await pickPersonality({ current: state.personality, allowCancel: true });
+    if (!id) return;
+    state = newState({ personality: id });
+  }
   save(); setBusy(false); closeModal(); renderAll(); say('新的豬生，開始囉！'); showIntro(state.mode);
 }
 
 // ---------- 啟動 ----------
 async function init() {
-  state = loadState() || newState();
-  buildStats(); renderAll();
+  state = loadState();
+  buildStats();
+  if (!state) {
+    const id = await pickPersonality({ firstRun: true });
+    state = newState({ personality: id || DEFAULT_PERSONALITY });
+    save();
+  } else if (!PigPersonalities.has(state.personality)) {
+    // 舊版存檔：第 1 天還沒動作就讓玩家選；進行中的局則套用預設值，避免中途改變平衡
+    if (state.mode !== 'daily' && !state.ended && state.day === 1 && state.log.length === 0) {
+      const id = await pickPersonality({ firstRun: true });
+      state = newState({ personality: id || DEFAULT_PERSONALITY });
+      save();
+    } else {
+      state.personality = DEFAULT_PERSONALITY;
+      save();
+    }
+  }
+  renderAll();
   $('btnRank').addEventListener('click', () => showLeaderboard(false));
   $('btnDaily').addEventListener('click', startDailyChallenge);
   $('btnCasual').addEventListener('click', startNormalChallenge);
@@ -1737,6 +1939,11 @@ async function init() {
   $('btnAchievements').addEventListener('click', () => showAchievements(false));
   $('btnSettings').addEventListener('click', showSettings);
   $('btnRestart').addEventListener('click', restart);
+  const persBadge = $('persBadge');
+  if (persBadge) {
+    persBadge.addEventListener('click', showPersonalityInfo);
+    persBadge.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); showPersonalityInfo(); } });
+  }
   $('btnInstall').addEventListener('click', async () => {
     if (!deferredInstall) return;
     deferredInstall.prompt();

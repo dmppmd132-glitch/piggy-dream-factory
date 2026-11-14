@@ -1,0 +1,628 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/dmppmd132-glitch/piggy-dream-factory/data/events.schema.json",
+  "title": "豬豬夢工場：事件連鎖劇本",
+  "description": "描述多節點、可分支、帶旗標與結局的事件鏈。遊戲端與未來的 Worker 驗證端共用同一份結構。",
+  "type": "object",
+  "required": [
+    "schemaVersion",
+    "chains"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "$schema": {
+      "type": "string"
+    },
+    "schemaVersion": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "contentVersion": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "rulesVersion": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "npcs": {
+      "type": "object",
+      "description": "本劇本用到的角色。實作時合併進 RELATION_NAMES 與頭像對照表。",
+      "additionalProperties": {
+        "type": "object",
+        "required": [
+          "name",
+          "emoji"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "name": {
+            "type": "string",
+            "maxLength": 12
+          },
+          "emoji": {
+            "type": "string",
+            "maxLength": 4
+          }
+        }
+      }
+    },
+    "defaults": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "maxActiveChains": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 3
+        },
+        "chainCooldownDays": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 10
+        },
+        "flagLimit": {
+          "type": "integer",
+          "minimum": 8,
+          "maximum": 64
+        },
+        "historyLimit": {
+          "type": "integer",
+          "minimum": 10,
+          "maximum": 100
+        },
+        "maxSpanDays": {
+          "type": "integer",
+          "minimum": 4,
+          "maximum": 30
+        }
+      }
+    },
+    "chains": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "$ref": "#/$defs/chain"
+      }
+    }
+  },
+  "$defs": {
+    "statKey": {
+      "type": "string",
+      "enum": [
+        "stamina",
+        "int",
+        "str",
+        "cha",
+        "weight",
+        "gold",
+        "mood"
+      ]
+    },
+    "range": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "min": {
+          "type": "number"
+        },
+        "max": {
+          "type": "number"
+        }
+      }
+    },
+    "effects": {
+      "type": "object",
+      "description": "一次性的數值增減。實際套用時仍會經過遊戲端的 clamp 與個性倍率。",
+      "additionalProperties": false,
+      "properties": {
+        "stamina": {
+          "type": "integer",
+          "minimum": -30,
+          "maximum": 30
+        },
+        "int": {
+          "type": "integer",
+          "minimum": -8,
+          "maximum": 12
+        },
+        "str": {
+          "type": "integer",
+          "minimum": -8,
+          "maximum": 12
+        },
+        "cha": {
+          "type": "integer",
+          "minimum": -8,
+          "maximum": 12
+        },
+        "weight": {
+          "type": "integer",
+          "minimum": -8,
+          "maximum": 10
+        },
+        "gold": {
+          "type": "integer",
+          "minimum": -120,
+          "maximum": 120
+        },
+        "mood": {
+          "type": "integer",
+          "minimum": -20,
+          "maximum": 20
+        }
+      }
+    },
+    "relationshipDelta": {
+      "type": "object",
+      "description": "NPC 好感度增減，鍵必須存在於 npcs 或遊戲內建的 RELATION_NAMES。",
+      "additionalProperties": {
+        "type": "integer",
+        "minimum": -30,
+        "maximum": 30
+      }
+    },
+    "flagOps": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "set": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "pattern": "^[a-z0-9_]+$"
+          },
+          "maxItems": 6
+        },
+        "clear": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "pattern": "^[a-z0-9_]+$"
+          },
+          "maxItems": 6
+        }
+      }
+    },
+    "flagCondition": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "all": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "maxItems": 12
+        },
+        "any": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "maxItems": 12
+        },
+        "none": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "maxItems": 12
+        },
+        "atLeast": {
+          "type": "object",
+          "description": "在 of 清單中至少符合 count 個旗標。",
+          "required": [
+            "count",
+            "of"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "count": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 12
+            },
+            "of": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "minItems": 1,
+              "maxItems": 12
+            }
+          }
+        }
+      }
+    },
+    "condition": {
+      "type": "object",
+      "description": "所有欄位皆為 AND；未填寫的欄位視為不限制。",
+      "additionalProperties": false,
+      "properties": {
+        "day": {
+          "$ref": "#/$defs/range"
+        },
+        "stats": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "stamina": {
+              "$ref": "#/$defs/range"
+            },
+            "int": {
+              "$ref": "#/$defs/range"
+            },
+            "str": {
+              "$ref": "#/$defs/range"
+            },
+            "cha": {
+              "$ref": "#/$defs/range"
+            },
+            "weight": {
+              "$ref": "#/$defs/range"
+            },
+            "gold": {
+              "$ref": "#/$defs/range"
+            },
+            "mood": {
+              "$ref": "#/$defs/range"
+            }
+          }
+        },
+        "relationship": {
+          "type": "object",
+          "additionalProperties": {
+            "$ref": "#/$defs/range"
+          }
+        },
+        "flags": {
+          "$ref": "#/$defs/flagCondition"
+        },
+        "personality": {
+          "type": "array",
+          "items": {
+            "enum": [
+              "balanced",
+              "lazy",
+              "scholar",
+              "foodie",
+              "star",
+              "athlete",
+              "brave"
+            ]
+          },
+          "maxItems": 7
+        },
+        "mode": {
+          "enum": [
+            "normal",
+            "daily"
+          ]
+        },
+        "chainDone": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "maxItems": 12
+        },
+        "chance": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        }
+      }
+    },
+    "choice": {
+      "type": "object",
+      "required": [
+        "id",
+        "text",
+        "result",
+        "next"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^[a-z0-9_]+$"
+        },
+        "text": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 60
+        },
+        "result": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 300
+        },
+        "requires": {
+          "$ref": "#/$defs/condition"
+        },
+        "locked": {
+          "type": "string",
+          "maxLength": 40
+        },
+        "effects": {
+          "$ref": "#/$defs/effects"
+        },
+        "relationship": {
+          "$ref": "#/$defs/relationshipDelta"
+        },
+        "flags": {
+          "$ref": "#/$defs/flagOps"
+        },
+        "next": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
+    "node": {
+      "type": "object",
+      "required": [
+        "id",
+        "text"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^[a-z0-9_]+$"
+        },
+        "scene": {
+          "type": "string"
+        },
+        "speaker": {
+          "type": "string",
+          "maxLength": 30
+        },
+        "text": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 500
+        },
+        "dayCost": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 3
+        },
+        "terminal": {
+          "type": "boolean"
+        },
+        "ending": {
+          "type": "string",
+          "description": "terminal 節點必填；auto 代表依 endings 的順序與條件自動判定。"
+        },
+        "choices": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 4,
+          "items": {
+            "$ref": "#/$defs/choice"
+          }
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "required": [
+              "terminal"
+            ],
+            "properties": {
+              "terminal": {
+                "const": true
+              }
+            }
+          },
+          "then": {
+            "required": [
+              "ending"
+            ],
+            "not": {
+              "required": [
+                "choices"
+              ]
+            }
+          }
+        },
+        {
+          "if": {
+            "not": {
+              "required": [
+                "terminal"
+              ],
+              "properties": {
+                "terminal": {
+                  "const": true
+                }
+              }
+            }
+          },
+          "then": {
+            "required": [
+              "choices"
+            ]
+          }
+        }
+      ]
+    },
+    "reward": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "effects": {
+          "$ref": "#/$defs/effects"
+        },
+        "relationship": {
+          "$ref": "#/$defs/relationshipDelta"
+        },
+        "flags": {
+          "$ref": "#/$defs/flagOps"
+        },
+        "title": {
+          "type": "string",
+          "maxLength": 12,
+          "description": "通關後掛在豬豬身上的稱號。"
+        },
+        "log": {
+          "type": "string",
+          "maxLength": 120
+        }
+      }
+    },
+    "ending": {
+      "type": "object",
+      "required": [
+        "id",
+        "title",
+        "emoji",
+        "text",
+        "reward"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^[a-z0-9_]+$"
+        },
+        "title": {
+          "type": "string",
+          "maxLength": 20
+        },
+        "emoji": {
+          "type": "string",
+          "maxLength": 4
+        },
+        "text": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 400
+        },
+        "requires": {
+          "$ref": "#/$defs/condition"
+        },
+        "reward": {
+          "$ref": "#/$defs/reward"
+        }
+      }
+    },
+    "trigger": {
+      "type": "object",
+      "required": [
+        "day",
+        "priority",
+        "requires"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "day": {
+          "$ref": "#/$defs/range"
+        },
+        "chance": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "priority": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 100
+        },
+        "requires": {
+          "$ref": "#/$defs/condition"
+        }
+      }
+    },
+    "chain": {
+      "type": "object",
+      "required": [
+        "id",
+        "title",
+        "emoji",
+        "theme",
+        "summary",
+        "trigger",
+        "start",
+        "nodes",
+        "endings"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^[a-z0-9_]+$"
+        },
+        "title": {
+          "type": "string",
+          "maxLength": 20
+        },
+        "emoji": {
+          "type": "string",
+          "maxLength": 4
+        },
+        "theme": {
+          "enum": [
+            "warmth",
+            "money",
+            "mystery",
+            "courage",
+            "dream",
+            "legend"
+          ]
+        },
+        "hidden": {
+          "type": "boolean"
+        },
+        "summary": {
+          "type": "string",
+          "maxLength": 160
+        },
+        "personalityAffinity": {
+          "type": "array",
+          "items": {
+            "enum": [
+              "balanced",
+              "lazy",
+              "scholar",
+              "foodie",
+              "star",
+              "athlete",
+              "brave"
+            ]
+          },
+          "maxItems": 7
+        },
+        "tags": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "maxItems": 6
+        },
+        "trigger": {
+          "$ref": "#/$defs/trigger"
+        },
+        "start": {
+          "type": "string"
+        },
+        "nodes": {
+          "type": "object",
+          "minProperties": 2,
+          "additionalProperties": {
+            "$ref": "#/$defs/node"
+          }
+        },
+        "endings": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "$ref": "#/$defs/ending"
+          }
+        }
+      }
+    }
+  }
+}

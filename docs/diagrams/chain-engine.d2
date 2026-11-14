@@ -1,0 +1,43 @@
+direction: down
+
+start: 每日行動結算
+ask: 今天要觸發事件嗎？ {
+  shape: diamond
+}
+next: 進入下一天
+
+chain: 有進行中的鏈？ {
+  shape: diamond
+}
+cont: 接續該鏈的下一個節點
+pick: 篩選可觸發的鏈
+weight: 依優先度與個性偏好加權
+hit: 抽中鏈？ {
+  shape: diamond
+}
+plain: 使用原有單一突發事件
+show: 顯示節點與選項
+apply: 套用數值、好感、旗標
+end?: 是終點節點？ {
+  shape: diamond
+}
+wait: 記錄節點，等下一次事件日
+judge: 依 endings 條件判定鏈結局
+reward: 發獎勵、寫日記、標記完成
+
+start -> ask
+ask -> next: 否
+ask -> chain: 是
+chain -> cont: 是
+chain -> pick: 否
+pick -> weight -> hit
+hit -> plain: 否
+hit -> show: 是
+cont -> show
+show -> apply -> end?
+end? -> wait: 否
+end? -> judge: 是
+judge -> reward
+plain -> next
+wait -> next
+reward -> next
