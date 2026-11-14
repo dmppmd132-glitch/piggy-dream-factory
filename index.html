@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>豬豬夢工場：30天豬生逆襲</title>
-<meta name="description" content="30 天把一隻普通小粉豬養成傳奇豬豬！繁體中文養成模擬網頁遊戲，支援加到主畫面（PWA），串接 Gemini 產生突發事件與結局報導。">
+<meta name="description" content="30 天把一隻普通小粉豬養成傳奇豬豬！繁體中文養成模擬網頁遊戲，含 42 則事件、每日天氣、永久成就與 Web Audio 音效，支援 PWA 離線遊玩。">
 <meta name="theme-color" content="#8b5a2b">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" href="icon.svg" type="image/svg+xml">
@@ -111,6 +111,7 @@ button{font-family:inherit}
 .act .name{font-weight:900}
 .act.danger{border-color:#b3302a;box-shadow:0 4px 0 #b3302a}
 .act .warn{font-size:.74rem;color:#b3302a;font-weight:800}
+.act .weather-note{font-size:.74rem;color:#2874a6;font-weight:800}
 .chips{display:flex;flex-wrap:wrap;gap:4px}
 .chip{font-size:.72rem;padding:0 6px;border-radius:10px;border:1px solid;font-weight:800;white-space:nowrap}
 .chip.up{background:#e3f7d8;border-color:#7cbf5a;color:#2f7a1a}
@@ -232,6 +233,7 @@ body.busy .act{pointer-events:none;opacity:.6}
       <button class="tbtn" id="btnInstall" hidden>📲 安裝</button>
       <button class="tbtn" id="btnRank">🏆 排行榜</button>
       <button class="tbtn" id="btnBook">📖 結局圖鑑</button>
+      <button class="tbtn" id="btnAchievements">🏅 成就</button>
       <button class="tbtn" id="btnSettings">⚙️ 設定</button>
       <button class="tbtn" id="btnRestart">🔄 重來</button>
     </div>
@@ -243,6 +245,7 @@ body.busy .act{pointer-events:none;opacity:.6}
       <div class="stage-view">
         <div class="badges">
           <div class="badge">📅 第 <span id="dayNum">1</span> / 30 天</div>
+          <div class="badge" id="weatherBadge" aria-live="polite"><span id="weatherNum">☀️ 晴朗</span></div>
           <div class="badge">🪙 <span id="goldNum">100</span> G</div>
         </div>
         <div class="bubble" id="bubble">今天要做什麼呢？</div>
@@ -438,6 +441,10 @@ const API_KEY_STORE = 'pdf_gemini_key';
 const LB_KEY = 'pdf_leaderboard_v1';     // 本機排行榜
 const NAME_KEY = 'pdf_player_name';      // 玩家暱稱
 const DEVICE_KEY = 'pdf_device_id';      // 匿名裝置代碼（線上排行榜用來辨識同一位玩家）
+const ACHIEVEMENT_KEY = 'pdf_achievements_v1';
+const EVENT_HISTORY_KEY = 'pdf_local_event_history_v1';
+const SOUND_KEY = 'pdf_sound_enabled';
+const HAPTIC_KEY = 'pdf_haptics_enabled';
 const LB_URL = ((window.PIG_CONFIG && window.PIG_CONFIG.leaderboardUrl) || '').replace(/\/+$/, '');
 
 // 各數值的上下限
@@ -470,6 +477,28 @@ const FLAVOR = {
   sleep: ['呼嚕嚕～睡得像一顆球。', '夢到自己變成傳奇豬，嘴角還在笑。', '睡飽飽，精神全回來了。'],
 };
 
+// 每天的天氣會影響可選行程或行程收益。
+const WEATHER = {
+  sunny: { emoji: '☀️', name: '晴朗', tip: '晴天打工額外賺 20G' },
+  cloudy: { emoji: '☁️', name: '多雲', tip: '天氣舒適，沒有額外影響' },
+  rainy: { emoji: '🌧️', name: '下雨', tip: '雨天地面太滑，泥巴健身房休館' },
+  windy: { emoji: '🍃', name: '微風', tip: '微風吹拂，沒有額外影響' },
+};
+function rollWeather() {
+  const n = rand(1, 100);
+  return n <= 32 ? 'sunny' : n <= 64 ? 'cloudy' : n <= 86 ? 'rainy' : 'windy';
+}
+
+// 每項成就只解鎖一次；永久加成會套用到之後的新局。
+const ACHIEVEMENTS = [
+  { id: 'no_sleep_5', emoji: '⚔️', title: '鐵蹄不眠', desc: '連續 5 天不選擇睡覺行動', bonus: { str: 5 }, test: s => (s.bestNoSleepStreak || 0) >= 5 },
+  { id: 'no_hospital', emoji: '🩺', title: '健健康康', desc: '一整局都沒有住院', bonus: { int: 5 }, test: s => (s.hospitalCount || 0) === 0 },
+  { id: 'weight_30', emoji: '⚖️', title: '剛剛好的幸福', desc: '以剛好 30kg 的體重通關', bonus: { cha: 5 }, test: s => s.weight === 30 },
+  { id: 'all_weather', emoji: '🌦️', title: '天氣觀察家', desc: '一局遇見晴朗、多雲、下雨與微風', bonus: { str: 5 }, test: s => new Set(s.weatherSeen || []).size >= Object.keys(WEATHER).length },
+  { id: 'event_lover', emoji: '📮', title: '牧場交際王', desc: '一局遇見至少 6 種不同的突發事件', bonus: { int: 5 }, test: s => new Set(s.eventTitles || []).size >= 6 },
+  { id: 'rich_pig', emoji: '💰', title: '小小富豬', desc: '通關時保有至少 300G', bonus: { cha: 5 }, test: s => s.gold >= 300 },
+];
+
 // 結局資料、判定與計分都在 game-core.js（與排行榜伺服器共用）
 
 // 把數值變化套進狀態並做上下限控制，回傳「實際」變動量
@@ -485,12 +514,23 @@ function applyDelta(s, d) {
 }
 
 function newState() {
+  const bonus = getAchievementMeta().bonuses;
+  const weather = rollWeather();
   return {
-    v: 1, day: 1, stamina: 100, int: 10, str: 10, cha: 10, weight: 30, gold: 100,
+    v: 1, day: 1, stamina: 100, int: 10 + bonus.int, str: 10 + bonus.str, cha: 10 + bonus.cha, weight: 30, gold: 100,
     sickDays: 0, nextEventDay: rand(3, 4), hit: {}, eventTitles: [], log: [],
     pendingEvent: null, ended: false, endingId: null, news: null, hospitalCount: 0, aiEvents: 0,
+    weather, weatherSeen: [weather], noSleepStreak: 0, bestNoSleepStreak: 0, newAchievements: [],
   };
 }
+
+function weatherAction(a, weather = state && state.weather) {
+  if (a.id === 'work' && weather === 'sunny') {
+    return Object.assign({}, a, { delta: Object.assign({}, a.delta, { gold: a.delta.gold + 20 }) });
+  }
+  return a;
+}
+function isWeatherBlocked(a, weather = state && state.weather) { return a.id === 'gym' && weather === 'rainy'; }
 
 // 檢查這一步能不能做：金幣是否足夠
 function canAfford(s, a) { return s.gold + (a.delta.gold || 0) >= 0; }
@@ -597,6 +637,98 @@ const LOCAL_EVENTS = [
     choices: [
       { text: '主動送去失物招領', result: '失主感動得熱淚盈眶，還送你一份謝禮，你的好名聲也傳開了。', effects: { cha: 5, gold: 10 } },
       { text: '偷偷收進口袋', result: '荷包確實變重了，但你走路總覺得背後有人在盯著你……', effects: { gold: 45, cha: -4 } } ] },
+
+  // 追加 30 則事件，連同原有事件共 42 則。
+  { tag: 'int', title: '蘋果派大賽', emoji: '🥧', story: '牧場舉辦蘋果派大賽，桌上排滿香噴噴的作品。主辦人宣布，冠軍可以帶走一整箱蘋果。', choices: [
+    { text: '研究食譜再參賽', result: '你精準控制火候，做出層次分明的派，評審連吃三塊。', effects: { int: 5, stamina: -8, gold: 15 } },
+    { text: '當試吃評審', result: '你提出「派要配松露」的專業建議，獲得一小袋酬謝。', effects: { stamina: 10, weight: 2, gold: 10 } } ] },
+  { tag: 'gold', title: '小鴨送信', emoji: '🦆', story: '一隻小鴨叼著信跑來，說牠要把信送到河對岸，可是河水看起來好急。', choices: [
+    { text: '陪牠走安全的橋', result: '小鴨平安送達，收件人送你一枚感謝金幣。', effects: { cha: 3, stamina: -6, gold: 18 } },
+    { text: '幫忙設計防水信筒', result: '你用樹葉和蠟封好信件，小鴨佩服得送上謝禮。', effects: { int: 3, gold: 12 } } ] },
+  { tag: 'cha', title: '迷你馬戲團', emoji: '🎪', story: '小雞們搭起迷你馬戲棚，想邀請你當今晚的壓軸明星。台下已經坐滿了小動物。', choices: [
+    { text: '上台轉圈圈表演', result: '觀眾笑著拍翅膀，你收穫滿滿掌聲和打賞。', effects: { cha: 6, stamina: -12, gold: 15 } },
+    { text: '幫忙主持節目', result: '你臨場反應超快，整場演出順利又熱鬧。', effects: { int: 3, cha: 3 } } ] },
+  { tag: 'str', title: '失控的乾草車', emoji: '🛒', story: '一台裝滿乾草的車沿著坡道滑下來，前面正好有一群正在聊天的小羊。', choices: [
+    { text: '用力把車推回平地', result: '你頂住車輪直到大家躲開，牧場長稱讚你可靠。', effects: { str: 5, stamina: -16, cha: 2 } },
+    { text: '大聲警告大家閃開', result: '小羊們及時散開，你的嗓門還意外震落幾顆蘋果。', effects: { cha: 4, gold: 8 } } ] },
+  { tag: 'int', title: '神秘舊地圖', emoji: '🗺️', story: '你在穀倉地板下找到一張泛黃地圖，上面畫著一個大問號和三個泥巴腳印。', choices: [
+    { text: '仔細破解地圖符號', result: '你看懂了暗號，找到一袋被遺忘的零用錢。', effects: { int: 5, stamina: -8, gold: 20 } },
+    { text: '沿著腳印直接找', result: '你挖到一顆完美的蘿蔔，吃完精神好多了。', effects: { stamina: 15, weight: 1 } } ] },
+  { tag: 'gold', title: '河邊撈珍珠', emoji: '🦪', story: '河岸邊有隻老鴨說，今天水面下可能藏著一顆很值錢的珍珠。', choices: [
+    { text: '下水仔細尋找', result: '你摸到一顆亮晶晶的珍珠，珠寶商立刻開價收購。', effects: { stamina: -12, gold: 32 } },
+    { text: '幫老鴨整理攤位', result: '雖然沒找到珍珠，老鴨仍付了你一筆辛苦費。', effects: { cha: 2, gold: 18 } } ] },
+  { tag: 'str', title: '巡邏小隊徵人', emoji: '🛡️', story: '牧場夜間巡邏隊缺一位隊員，隊長保證只是巡查圍欄，不會遇到野狼。', choices: [
+    { text: '扛起燈籠加入巡邏', result: '你走完全程，還順手修好了鬆脫的柵欄。', effects: { str: 4, stamina: -10, gold: 12 } },
+    { text: '替隊伍畫巡邏路線', result: '你規劃出最省力的路線，隊長送你一份謝禮。', effects: { int: 4, gold: 8 } } ] },
+  { tag: null, title: '被遺忘的野餐', emoji: '🧺', story: '樹下有一籃沒人認領的野餐，裡面放著水果、麵包和一張「歡迎分享」的小卡。', choices: [
+    { text: '吃點水果補充體力', result: '酸甜水果讓你精神一振，還留了一些給小鳥。', effects: { stamina: 22, weight: 1 } },
+    { text: '把野餐整理成分享桌', result: '大家一起來吃，你因為貼心得到不少稱讚。', effects: { cha: 4, gold: 5 } } ] },
+  { tag: 'cha', title: '花田採蜜', emoji: '🌼', story: '花田裡的小蜜蜂正在採蜜，牠們邀請你一起幫忙照顧新開的花朵。', choices: [
+    { text: '溫柔替花朵澆水', result: '花田開得更漂亮，蜜蜂送你一小瓶蜂蜜。', effects: { cha: 4, stamina: -5, gold: 10 } },
+    { text: '幫忙記錄花期', result: '你整理出一份清楚的花期表，大家都說下次還要找你。', effects: { int: 4, cha: 2 } } ] },
+  { tag: 'str', title: '壞掉的水車', emoji: '⚙️', story: '灌溉用的水車卡住了，附近菜園快要缺水，農夫們正急得團團轉。', choices: [
+    { text: '一起轉動卡住的輪軸', result: '你咬牙出力，水車終於重新轉動，菜園得救了。', effects: { str: 5, stamina: -14, cha: 2 } },
+    { text: '找出卡住的木枝', result: '你發現只是一根小樹枝，解決問題後還領到謝禮。', effects: { int: 3, gold: 12 } } ] },
+  { tag: 'int', title: '小精靈借光', emoji: '✨', story: '一隻小精靈的燈籠突然熄了，牠想借你的螢火蟲瓶照亮回家的路。', choices: [
+    { text: '陪牠研究燈籠機關', result: '你找出鬆掉的扣環，小精靈教了你一個發光小技巧。', effects: { int: 4, cha: 2 } },
+    { text: '陪牠走回森林', result: '一路上你們聊得很開心，牠送你一顆星星糖。', effects: { stamina: -5, cha: 4, weight: 1 } } ] },
+  { tag: 'gold', title: '牧場義賣會', emoji: '🎁', story: '牧場舉辦義賣會，大家拿出手作小物，希望替受傷的小兔募集醫藥費。', choices: [
+    { text: '幫忙叫賣手作小物', result: '你的叫賣聲吸引一大群客人，主辦人分給你辛苦費。', effects: { cha: 3, stamina: -8, gold: 22 } },
+    { text: '捐出一些豬豬幣', result: '小兔收到大家的幫助，還把一張感謝卡送給你。', effects: { gold: -10, cha: 6 } } ] },
+  { tag: 'cha', title: '迷你豬合唱團', emoji: '🎵', story: '三隻小豬組成合唱團，卻少一個人帶音準。牠們拜託你站到隊伍前面。', choices: [
+    { text: '帶頭唱一首歌', result: '你的歌聲讓大家越唱越整齊，最後還加唱一首安可曲。', effects: { cha: 5, stamina: -8 } },
+    { text: '幫大家排練節拍', result: '你敲著木桶帶節奏，合唱團很快就找到默契。', effects: { int: 3, cha: 3 } } ] },
+  { tag: 'cha', title: '迷路的刺蝟', emoji: '🦔', story: '一隻刺蝟在牧場邊找不到回家的路，牠小心翼翼地問你能不能帶路。', choices: [
+    { text: '陪牠沿著溪邊找家', result: '刺蝟終於回到熟悉的樹洞，臨走前送你一顆栗子。', effects: { cha: 5, stamina: -8, weight: 1 } },
+    { text: '畫一張清楚的路線圖', result: '你畫的地圖連方向都標得很仔細，刺蝟感激地道謝。', effects: { int: 4, cha: 2 } } ] },
+  { tag: 'weight', title: '巨大南瓜', emoji: '🎃', story: '菜園裡長出一顆比你還大的南瓜，農夫說只要搬到廣場就送你一份南瓜點心。', choices: [
+    { text: '自己把南瓜推過去', result: '你一路推到廣場，累得喘氣，但南瓜點心真好吃。', effects: { str: 3, stamina: -12, weight: 2 } },
+    { text: '切塊分給大家一起搬', result: '大家合作很快完成，你也拿到一袋南瓜籽。', effects: { cha: 3, gold: 8 } } ] },
+  { tag: 'str', title: '風箏掛樹', emoji: '🪁', story: '小羊的風箏卡在高高的樹枝上，牠急得快哭出來了。', choices: [
+    { text: '爬上樹把風箏取下', result: '你穩穩爬上去救回風箏，小羊開心地送你一份點心。', effects: { str: 4, stamina: -10, cha: 2 } },
+    { text: '用長竹竿勾下來', result: '你想出省力的方法，風箏安全落回小羊手上。', effects: { int: 3, stamina: -4 } } ] },
+  { tag: 'int', title: '老奶奶的食譜', emoji: '📜', story: '豬奶奶找不到祖傳食譜，廚房裡只剩一張寫著「先放松露」的紙條。', choices: [
+    { text: '依線索推理完整食譜', result: '你把缺失步驟補齊，煮出一鍋香氣四溢的濃湯。', effects: { int: 5, stamina: 8, weight: 1 } },
+    { text: '陪奶奶回憶以前的味道', result: '奶奶想起了食譜，還教你一個保存食材的小秘訣。', effects: { cha: 4, int: 2 } } ] },
+  { tag: null, title: '溫泉泥池', emoji: '♨️', story: '牧場後方新冒出一池溫暖的泥漿泉，大家都說泡一泡能消除疲勞。', choices: [
+    { text: '泡個舒服的泥巴浴', result: '熱呼呼的泥漿讓你全身放鬆，出來後精神好多了。', effects: { stamina: 24, cha: 2 } },
+    { text: '研究泉水從哪裡來', result: '你找到泉眼的位置，牧場決定替這裡掛上指示牌。', effects: { int: 4, stamina: -4 } } ] },
+  { tag: 'gold', title: '彩虹尋寶', emoji: '🌈', story: '雨後出現一道彩虹，傳說彩虹盡頭藏著一只小寶箱。小雞們邀你一起去找。', choices: [
+    { text: '沿著彩虹方向探索', result: '你在草叢裡找到寶箱，裡面有幾枚閃亮的豬豬幣。', effects: { stamina: -10, gold: 28 } },
+    { text: '先問問附近居民', result: '大家拼出寶箱位置，還分給你一點尋寶謝禮。', effects: { int: 3, gold: 16 } } ] },
+  { tag: 'str', title: '農夫運動會', emoji: '🏅', story: '農夫運動會臨時少一位選手，最熱門的項目是推稻草球接力。', choices: [
+    { text: '報名推稻草球', result: '你穩穩推過終點，隊友們歡呼著替你戴上獎牌。', effects: { str: 5, stamina: -14, gold: 10 } },
+    { text: '當隊伍策略顧問', result: '你安排好交接順序，隊伍跑出意想不到的好成績。', effects: { int: 4, cha: 2 } } ] },
+  { tag: 'weight', title: '夜市試吃團', emoji: '🍢', story: '牧場夜市邀你當新攤位試吃員，桌上有烤玉米、蘿蔔糕和松露丸子。', choices: [
+    { text: '每樣都認真試一口', result: '你給出公平的評語，攤主送你一袋小點心。', effects: { weight: 2, stamina: 12, cha: 2 } },
+    { text: '幫忙宣傳最好吃的一攤', result: '你介紹得太生動，客人排成長隊，攤主付你宣傳費。', effects: { cha: 4, gold: 18 } } ] },
+  { tag: 'gold', title: '小松鼠存糧', emoji: '🐿️', story: '小松鼠的堅果倉庫門被卡住，冬天快到了，牠急著把存糧搬進去。', choices: [
+    { text: '幫牠搬一大袋堅果', result: '你搬完最後一袋，松鼠送你一份搬運酬勞。', effects: { str: 2, stamina: -10, gold: 20 } },
+    { text: '替倉庫設計分類標籤', result: '松鼠很快找到所有存糧，還送你幾枚感謝金幣。', effects: { int: 4, gold: 10 } } ] },
+  { tag: 'int', title: '魔法胡蘿蔔', emoji: '🥕', story: '菜園裡有一根會發光的胡蘿蔔，牌子寫著「吃之前請先猜它的顏色」。', choices: [
+    { text: '先研究胡蘿蔔的光', result: '你發現那是露珠折射的光，菜園主人送你一袋種子。', effects: { int: 5, gold: 8 } },
+    { text: '直接咬一小口', result: '胡蘿蔔甜得出奇，你覺得身體充滿活力。', effects: { stamina: 15, weight: 1 } } ] },
+  { tag: 'int', title: '書頁上的密碼', emoji: '🔐', story: '圖書館一本舊書的頁邊寫著密碼，解開後似乎能找到一張藏書票。', choices: [
+    { text: '花時間破解密碼', result: '你找到珍藏版書籤，館長還讓你借閱特別藏書。', effects: { int: 5, stamina: -7 } },
+    { text: '把線索交給圖書館員', result: '館員順利找回失物，送你一袋感謝金幣。', effects: { cha: 2, gold: 15 } } ] },
+  { tag: 'cha', title: '牧場選美', emoji: '👑', story: '牧場舉辦年度可愛大賽，裁判說自信比完美造型更重要。', choices: [
+    { text: '勇敢走上伸展台', result: '你自然大方地揮蹄，觀眾立刻給你熱烈掌聲。', effects: { cha: 5, stamina: -8 } },
+    { text: '替其他選手加油', result: '大家被你的熱情感染，主辦人頒給你最佳人氣獎。', effects: { cha: 3, gold: 12 } } ] },
+  { tag: 'cha', title: '陶藝課初體驗', emoji: '🏺', story: '陶藝老師邀你試做一個泥巴杯，並提醒大家：「裂掉也算藝術喔。」', choices: [
+    { text: '捏一個漂亮小杯子', result: '你的杯子雖然有點歪，卻被評為最有個性的作品。', effects: { cha: 4, stamina: -8, gold: 8 } },
+    { text: '研究陶土比例', result: '你調出很好用的陶土配方，老師把配方筆記送給你。', effects: { int: 4, cha: 1 } } ] },
+  { tag: 'str', title: '藤蔓迷宮', emoji: '🌿', story: '菜園旁長出一座藤蔓迷宮，小兔進去找球後一直沒有出來。', choices: [
+    { text: '撥開藤蔓進去找牠', result: '你找到小兔並開出一條回家的路，大家都鬆了一口氣。', effects: { str: 4, stamina: -12, cha: 3 } },
+    { text: '站高處指引方向', result: '你看出迷宮的出口位置，順利把小兔引了出來。', effects: { int: 4, cha: 2 } } ] },
+  { tag: null, title: '志工看星星', emoji: '🌠', story: '天文社今晚在草地辦觀星活動，缺一位志工幫忙搬望遠鏡和熱茶。', choices: [
+    { text: '幫忙搬器材與熱茶', result: '大家輪流看見流星，你也得到一杯暖呼呼的茶。', effects: { stamina: 12, cha: 3 } },
+    { text: '記錄流星出現時間', result: '你整理的紀錄十分準確，社長送你一枚星星徽章。', effects: { int: 4, gold: 8 } } ] },
+  { tag: 'str', title: '木桶漂流賽', emoji: '🛢️', story: '小河舉辦木桶漂流賽，參賽者要划過三個浮標才能到終點。', choices: [
+    { text: '跳進桶裡奮力划水', result: '你掌握水流方向，第一個抵達終點，拿下小獎金。', effects: { str: 4, stamina: -12, gold: 18 } },
+    { text: '替隊伍規劃路線', result: '你找到最平穩的水道，隊伍安全完成比賽。', effects: { int: 3, cha: 3 } } ] },
+  { tag: 'gold', title: '迷你稻草人', emoji: '🌾', story: '農夫做了一個迷你稻草人，想放在攤位上當招牌，卻不知道該怎麼定價。', choices: [
+    { text: '替它畫上可愛笑臉', result: '招牌變得超受歡迎，農夫送你一筆小小版稅。', effects: { cha: 3, gold: 18 } },
+    { text: '幫忙計算合理價格', result: '你提出公道的售價，稻草人很快就賣光了。', effects: { int: 4, gold: 12 } } ] },
 ];
 
 // 把外部（AI）資料整理成安全的事件物件；格式不對就回傳 null
@@ -639,8 +771,10 @@ function parseJsonLoose(text) {
 
 // 在地備用事件：優先挑符合觸發原因標籤、且最近沒出現過的
 function pickLocalEvent(s, tag) {
-  const fresh = LOCAL_EVENTS.filter(e => !s.eventTitles.includes(e.title));
-  const pool = fresh.length ? fresh : LOCAL_EVENTS;
+  const seenRecently = new Set(recentEventTitles());
+  const fresh = LOCAL_EVENTS.filter(e => !s.eventTitles.includes(e.title) && !seenRecently.has(e.title));
+  const thisRunFresh = LOCAL_EVENTS.filter(e => !s.eventTitles.includes(e.title));
+  const pool = fresh.length ? fresh : (thisRunFresh.length ? thisRunFresh : LOCAL_EVENTS);
   const tagged = tag ? pool.filter(e => e.tag === tag) : [];
   return JSON.parse(JSON.stringify(pick(tagged.length ? tagged : pool)));
 }
@@ -690,10 +824,36 @@ function loadState() {
     if (!raw) return null;
     const s = JSON.parse(raw);
     if (!s || s.v !== 1 || typeof s.day !== 'number') return null;
-    return Object.assign(newState(), s);
+    const merged = Object.assign(newState(), s);
+    if (!WEATHER[merged.weather]) merged.weather = rollWeather();
+    if (!Array.isArray(merged.weatherSeen)) merged.weatherSeen = [merged.weather];
+    if (!Array.isArray(merged.newAchievements)) merged.newAchievements = [];
+    if (!Number.isFinite(merged.noSleepStreak)) merged.noSleepStreak = 0;
+    if (!Number.isFinite(merged.bestNoSleepStreak)) merged.bestNoSleepStreak = merged.noSleepStreak;
+    return merged;
   } catch (e) { return null; }
 }
 function loadBook() { try { return JSON.parse(localStorage.getItem(BOOK_KEY)) || {}; } catch (e) { return {}; } }
+function getAchievementMeta() {
+  try {
+    const raw = JSON.parse(localStorage.getItem(ACHIEVEMENT_KEY) || 'null');
+    const unlocked = raw && Array.isArray(raw.unlocked) ? raw.unlocked.filter(id => ACHIEVEMENTS.some(a => a.id === id)) : [];
+    const bonuses = raw && raw.bonuses && typeof raw.bonuses === 'object' ? raw.bonuses : {};
+    return { unlocked, bonuses: { int: Math.max(0, Number(bonuses.int) || 0), str: Math.max(0, Number(bonuses.str) || 0), cha: Math.max(0, Number(bonuses.cha) || 0) } };
+  } catch (e) { return { unlocked: [], bonuses: { int: 0, str: 0, cha: 0 } }; }
+}
+function saveAchievementMeta(meta) { try { localStorage.setItem(ACHIEVEMENT_KEY, JSON.stringify(meta)); } catch (e) { /* 忽略 */ } }
+function unlockAchievements(s) {
+  const meta = getAchievementMeta(), newly = [];
+  for (const a of ACHIEVEMENTS) {
+    if (!meta.unlocked.includes(a.id) && a.test(s)) {
+      meta.unlocked.push(a.id); newly.push(a.id);
+      for (const [k, v] of Object.entries(a.bonus)) meta.bonuses[k] += v;
+    }
+  }
+  if (newly.length) saveAchievementMeta(meta);
+  return newly;
+}
 function saveBook(b) { try { localStorage.setItem(BOOK_KEY, JSON.stringify(b)); } catch (e) { /* 忽略 */ } }
 function getKey() { try { return (localStorage.getItem(API_KEY_STORE) || '').trim(); } catch (e) { return ''; } }
 
@@ -713,6 +873,51 @@ function chipsHtml(real) {
 function addLog(text, cls = '') {
   state.log.unshift({ day: Math.min(state.day, TOTAL_DAYS), text, cls });
   if (state.log.length > 60) state.log.length = 60;
+}
+function rememberEventTitle(title) {
+  try {
+    const history = JSON.parse(localStorage.getItem(EVENT_HISTORY_KEY) || '[]');
+    const next = (Array.isArray(history) ? history.filter(t => t !== title) : []);
+    next.push(title);
+    localStorage.setItem(EVENT_HISTORY_KEY, JSON.stringify(next.slice(-25)));
+  } catch (e) { /* 儲存空間不可用時仍可遊玩 */ }
+}
+function recentEventTitles() {
+  try { const h = JSON.parse(localStorage.getItem(EVENT_HISTORY_KEY) || '[]'); return Array.isArray(h) ? h : []; } catch (e) { return []; }
+}
+function settingEnabled(key) { try { return localStorage.getItem(key) !== '0'; } catch (e) { return true; } }
+function playSound(type) {
+  if (!settingEnabled(SOUND_KEY)) return;
+  try {
+    const Audio = window.AudioContext || window.webkitAudioContext;
+    if (!Audio) return;
+    if (!playSound.context) playSound.context = new Audio();
+    const ctx = playSound.context;
+    if (ctx.state === 'suspended') ctx.resume().catch(() => {});
+    const patterns = {
+      action: [[520, 0.055, 0, 0.035]],
+      growth: [[440, 0.09, 0, 0.045], [660, 0.12, 0.075, 0.04]],
+      event: [[560, 0.08, 0, 0.04], [740, 0.1, 0.07, 0.035]],
+      collapse: [[330, 0.14, 0, 0.05], [220, 0.22, 0.12, 0.045]],
+      ending: [[523, 0.13, 0, 0.04], [659, 0.14, 0.1, 0.04], [784, 0.27, 0.21, 0.045]],
+      achievement: [[659, 0.1, 0, 0.04], [784, 0.12, 0.09, 0.04], [988, 0.2, 0.19, 0.045]],
+    };
+    const now = ctx.currentTime;
+    for (const [hz, duration, delay, volume] of (patterns[type] || patterns.action)) {
+      const osc = ctx.createOscillator(), gain = ctx.createGain(), start = now + delay;
+      osc.type = 'sine'; osc.frequency.setValueAtTime(hz, start);
+      gain.gain.setValueAtTime(0.0001, start);
+      gain.gain.exponentialRampToValueAtTime(volume, start + 0.012);
+      gain.gain.exponentialRampToValueAtTime(0.0001, start + duration);
+      osc.connect(gain); gain.connect(ctx.destination); osc.start(start); osc.stop(start + duration + 0.02);
+    }
+  } catch (e) { /* 音效不支援時不影響遊戲 */ }
+}
+function feedback(type) {
+  playSound(type);
+  if (!settingEnabled(HAPTIC_KEY) || !navigator.vibrate) return;
+  const patterns = { action: 8, growth: [15, 25, 20], event: 12, collapse: [70, 45, 100], ending: [25, 35, 45, 50, 80], achievement: [18, 25, 48] };
+  try { navigator.vibrate(patterns[type] || 10); } catch (e) { /* 裝置不支援時忽略 */ }
 }
 function say(text) { $('bubble').textContent = text; }
 
@@ -828,6 +1033,11 @@ function renderStats() {
   $('dayNum').textContent = Math.min(s.day, TOTAL_DAYS);
   $('goldNum').textContent = s.gold;
 }
+function renderWeather() {
+  const w = WEATHER[state.weather] || WEATHER.cloudy;
+  $('weatherNum').textContent = `${w.emoji} ${w.name}`;
+  $('weatherBadge').title = w.tip;
+}
 function flash(real) {
   for (const k of Object.keys(real)) {
     const row = document.querySelector(`.stat[data-k="${k}"] .delta`);
@@ -854,17 +1064,24 @@ function renderActions() {
         <span class="name">${a.emoji} ${a.name}</span>
         <span class="chips">${actionChips(a)}</span>
         <span class="warn" hidden>⚠️ 體力會歸零，會昏倒住院！</span>
+        <span class="weather-note" hidden></span>
       </button>`).join('');
     box.querySelectorAll('.act').forEach(b => b.addEventListener('click', () => onAction(b.dataset.id)));
   }
   box.querySelectorAll('.act').forEach(b => {
     const a = ACTIONS.find(x => x.id === b.dataset.id);
     const poor = !canAfford(state, a);
-    b.disabled = poor || state.ended;
-    b.title = poor ? '豬豬幣不夠囉' : '';
+    const weatherBlocked = isWeatherBlocked(a, state.weather);
+    b.disabled = poor || weatherBlocked || state.ended;
+    b.title = poor ? '豬豬幣不夠囉' : (weatherBlocked ? '下雨天健身房休館，明天再來' : '');
     const danger = willCollapse(state, a);
     b.classList.toggle('danger', danger);
     b.querySelector('.warn').hidden = !danger;
+    const note = b.querySelector('.weather-note');
+    note.hidden = !weatherBlocked;
+    note.textContent = weatherBlocked ? '🌧️ 下雨天，健身房休館' : '';
+    const chips = b.querySelector('.chips');
+    chips.innerHTML = actionChips(weatherAction(a, state.weather));
   });
 }
 function renderLog() {
@@ -872,12 +1089,14 @@ function renderLog() {
     ? state.log.map(l => `<li class="${esc(l.cls || '')}"><span class="d">第${l.day}天</span> ${esc(l.text)}</li>`).join('')
     : '<li class="small">還沒有日記，今天就開始吧！</li>';
 }
-function renderAll() { renderStats(); renderPig(); renderActions(); renderLog(); }
+function renderAll() { renderStats(); renderPig(); renderWeather(); renderActions(); renderLog(); }
 
 // ---------- 每日流程 ----------
 async function onAction(id) {
   if (busyFlag || state.ended || state.pendingEvent) return;
-  const a = ACTIONS.find(x => x.id === id);
+  const baseAction = ACTIONS.find(x => x.id === id);
+  if (isWeatherBlocked(baseAction, state.weather)) { toast('下雨天泥地太滑，健身房今天休館！'); return; }
+  const a = weatherAction(baseAction, state.weather);
   if (!canAfford(state, a)) { toast('豬豬幣不夠囉！先去打工吧'); return; }
   if (willCollapse(state, a)) {
     const ok = await confirmBox('⚠️ 體力快撐不住了', '做完這個行動，體力會歸零，豬豬會<b>昏倒住院 2 天</b>並扣醫藥費。<br>確定要硬撐嗎？', '硬撐！', '我再想想');
@@ -888,6 +1107,12 @@ async function onAction(id) {
   const wasSick = state.sickDays > 0;
   const { real, weak } = runAction(state, a);
   if (wasSick) state.sickDays = Math.max(0, state.sickDays - 1);
+  state.noSleepStreak = id === 'sleep' ? 0 : (state.noSleepStreak || 0) + 1;
+  state.bestNoSleepStreak = Math.max(state.bestNoSleepStreak || 0, state.noSleepStreak);
+  feedback('action');
+  if (a.main && real[a.main] > 0) feedback('growth');
+  if (state.weather === 'sunny' && id === 'work') addLog('☀️ 晴天加成：打工額外賺到 20G！', 'ev');
+  if (state.weather === 'rainy' && id !== 'gym') addLog('🌧️ 雨聲滴答作響，泥巴健身房今天休館。', 'ev');
 
   const flavor = pick(FLAVOR[a.id]);
   addLog(`${a.emoji} ${flavor}${weak ? '（身體虛弱，成效打七折）' : ''}`);
@@ -898,10 +1123,15 @@ async function onAction(id) {
   let hosp = null;
   if (state.stamina <= 0) {
     hosp = hospitalize(state);
+    feedback('collapse');
     nextDay = dayDone + 3;     // 當天昏倒 + 住院 2 天
     addLog(`🏥 體力歸零昏倒！住院休息 2 天，醫藥費 ${hosp.fee}G。`, 'bad');
   }
   state.day = nextDay;
+  if (state.day <= TOTAL_DAYS) {
+    state.weather = rollWeather();
+    if (!state.weatherSeen.includes(state.weather)) state.weatherSeen.push(state.weather);
+  }
   save();
   renderAll();
 
@@ -1030,7 +1260,9 @@ function presentEvent(ev) {
           const real = applyDelta(state, c.effects);
           if (state.stamina < 1) { real.stamina = (real.stamina || 0) + (1 - state.stamina); state.stamina = 1; }
           state.eventTitles.push(ev.title);
-          if (state.eventTitles.length > 20) state.eventTitles.shift();
+          if (state.eventTitles.length > 40) state.eventTitles.shift();
+          if (ev.source === 'local') rememberEventTitle(ev.title);
+          feedback('event');
           if (ev.source === 'ai') state.aiEvents++;
           addLog(`${ev.emoji} 【${ev.title}】${c.text}`, 'ev');
           save(); renderAll(); flash(real);
@@ -1110,6 +1342,10 @@ async function finishGame() {
   state.ended = true; state.endingId = e.id;
   const book = loadBook();
   const first = !book[e.id];
+  state.newAchievements = unlockAchievements(state);
+  state.permanentBonus = getAchievementMeta().bonuses;
+  if (first) feedback('ending');
+  if (state.newAchievements.length) feedback('achievement');
   book[e.id] = { count: ((book[e.id] && book[e.id].count) || 0) + 1, last: new Date().toISOString(), best: { int: state.int, str: state.str, cha: state.cha, weight: state.weight, gold: state.gold } };
   saveBook(book);
   state.firstUnlock = first;
@@ -1136,6 +1372,8 @@ async function showEnding() {
   clone.querySelectorAll('[id]').forEach(x => x.removeAttribute('id'));
   const book = loadBook();
   const unlocked = Object.keys(book).length;
+  const newAch = ACHIEVEMENTS.filter(a => (s.newAchievements || []).includes(a.id));
+  const bonus = s.permanentBonus || getAchievementMeta().bonuses;
   const lrank = s.runId ? localRankOf(s.runId) : null;
   const up = s.uploaded;
   closeModal();
@@ -1153,6 +1391,7 @@ async function showEnding() {
     } catch (err) { el.disabled = false; el.textContent = '📤 上傳線上排行榜'; toast('上傳失敗：' + err.message, 4000); }
   } });
   buttons.push({ text: '🏆 排行榜', cls: 'center', onClick: () => showLeaderboard(true) });
+  buttons.push({ text: '🏅 成就', cls: 'center', onClick: () => showAchievements(true) });
   buttons.push({ text: '📖 結局圖鑑', cls: 'center', onClick: () => showBook(true) });
   buttons.push({ text: '🔄 重新開始', cls: `center ${LB_URL && !up ? '' : 'primary'}`, onClick: () => { closeModal(); restart(); } });
 
@@ -1161,6 +1400,7 @@ async function showEnding() {
     title: `${e.emoji} 結局：${esc(e.title)}`,
     html: `
       ${s.firstUnlock ? '<p style="text-align:center;margin:0"><b style="color:#c23a30">🎉 新結局解鎖！</b></p>' : ''}
+      ${newAch.length ? `<div class="scorebox">🏅 本局新成就：${newAch.map(a => `${a.emoji} ${esc(a.title)}`).join('、')}<small>永久加成已記錄，重新開始後生效</small></div>` : ''}
       <div class="endpig"></div>
       <div class="sumrow"><span>📘 智慧 ${s.int}</span><span>💪 力量 ${s.str}</span><span>💖 魅力 ${s.cha}</span><span>⚖️ ${s.weight}kg</span><span>🪙 ${s.gold}G</span></div>
       <div class="scorebox">🏆 綜合分數 <b>${sc.total}</b>
@@ -1175,6 +1415,7 @@ async function showEnding() {
       </div>
       <p style="margin:8px 0 0"><b>🐷 豬豬暱稱</b>（排行榜顯示用）</p>
       <input class="field" id="nameInput" maxlength="${NAME_MAX}" autocomplete="off" placeholder="最多 ${NAME_MAX} 個字" value="${esc(getPlayerName())}" ${up ? 'disabled' : ''}>
+      <p class="small" style="text-align:center">🏅 永久加成：智慧 +${bonus.int}、力量 +${bonus.str}、魅力 +${bonus.cha}（新局套用）</p>
       <p class="small" style="text-align:center">已解鎖結局 ${unlocked} / ${ENDINGS.length}${LB_URL ? '' : '｜尚未設定線上排行榜，成績只會記在這台裝置'}</p>`,
     buttons,
   });
@@ -1220,6 +1461,31 @@ function showLeaderboard(fromEnding = false, tab) {
   });
 }
 
+function achievementProgress(a, s) {
+  if (a.id === 'no_sleep_5') return `本局最佳 ${Math.min(5, s.bestNoSleepStreak || 0)} / 5 天`;
+  if (a.id === 'no_hospital') return s.hospitalCount ? `已住院 ${s.hospitalCount} 次` : '目前保持零住院';
+  if (a.id === 'weight_30') return `目前體重 ${s.weight}kg，通關時需剛好 30kg`;
+  if (a.id === 'all_weather') return `遇見 ${new Set(s.weatherSeen || []).size} / ${Object.keys(WEATHER).length} 種天氣`;
+  if (a.id === 'event_lover') return `本局遇見 ${new Set(s.eventTitles || []).size} / 6 種事件`;
+  if (a.id === 'rich_pig') return `目前 ${s.gold} / 300G`;
+  return '';
+}
+function showAchievements(fromEnding = false) {
+  const meta = getAchievementMeta();
+  const cards = ACHIEVEMENTS.map(a => {
+    const got = meta.unlocked.includes(a.id);
+    const bonusText = Object.entries(a.bonus).map(([k, v]) => `${LABEL[k]} +${v}`).join('、');
+    return `<div class="bcard ${got ? '' : 'locked'}"><div class="e">${got ? a.emoji : '🔒'}</div><div class="t">${esc(a.title)}</div><div>${esc(a.desc)}</div><div class="small">${got ? '✅ 已解鎖' : esc(achievementProgress(a, state))}</div><div class="stars">永久加成：${esc(bonusText)}</div></div>`;
+  }).join('');
+  const bonus = meta.bonuses;
+  showModal({
+    wide: true, dismiss: !fromEnding, row: true,
+    title: `🏅 成就與第二輪目標（${meta.unlocked.length} / ${ACHIEVEMENTS.length}）`,
+    html: `<div class="scorebox">下一局起始加成：智慧 +${bonus.int}、力量 +${bonus.str}、魅力 +${bonus.cha}<small>新解鎖的永久加成從下一局開始生效</small></div><div class="book-grid">${cards}</div>`,
+    buttons: [{ text: fromEnding ? '← 回到結局' : '關閉', cls: 'center primary', onClick: () => { if (fromEnding && state.ended) showEnding(); else closeModal(); } }],
+  });
+}
+
 function showBook(fromEnding = false) {
   const book = loadBook();
   const cards = ENDINGS.map(e => {
@@ -1247,7 +1513,10 @@ function showSettings() {
       取得方式：<a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener">Google AI Studio</a></p>
       <input class="field" id="keyInput" type="password" autocomplete="off" placeholder="${hasKey ? '已設定（輸入新值可覆蓋）' : '貼上你的 API Key'}">
       ${iosHint}
-      <p class="small">目前狀態：${hasKey ? '✅ 已設定 API Key' : '⚪ 尚未設定（使用內建事件）'}</p>`,
+      <p class="small">目前狀態：${hasKey ? '✅ 已設定 API Key' : '⚪ 尚未設定（使用內建事件）'}</p>
+      <hr><p><b>回饋設定</b></p>
+      <label class="small"><input id="soundToggle" type="checkbox" ${settingEnabled(SOUND_KEY) ? 'checked' : ''}> 啟用 Web Audio 音效</label><br>
+      <label class="small"><input id="hapticToggle" type="checkbox" ${settingEnabled(HAPTIC_KEY) ? 'checked' : ''}> 啟用手機震動回饋（裝置支援時）</label>`,
     buttons: [
       { text: '💾 儲存', cls: 'center primary', onClick: () => {
         const v = $('keyInput').value.trim();
@@ -1258,6 +1527,8 @@ function showSettings() {
       { text: '關閉', cls: 'center', onClick: closeModal },
     ],
   });
+  m.body.querySelector('#soundToggle').addEventListener('change', e => { try { localStorage.setItem(SOUND_KEY, e.target.checked ? '1' : '0'); } catch (err) {} toast(e.target.checked ? '音效已開啟' : '音效已關閉'); });
+  m.body.querySelector('#hapticToggle').addEventListener('change', e => { try { localStorage.setItem(HAPTIC_KEY, e.target.checked ? '1' : '0'); } catch (err) {} toast(e.target.checked ? '觸覺回饋已開啟' : '觸覺回饋已關閉'); });
   return m;
 }
 function showIntro() {
@@ -1267,14 +1538,15 @@ function showIntro() {
       <p>你有 <b>30 天</b>，要把這隻普通的小粉豬養成<b>獨當一面的傳奇豬豬</b>！</p>
       <p>每天選 <b>1 個行動</b>：讀書、健身、練儀態、大吃大喝、打工，或睡覺回血。體力歸零會昏倒住院，記得量力而為。</p>
       <p>途中會遇到<b>突發事件</b>，你的選擇會影響數值。第 30 天結束後，依最終數值解鎖專屬結局與報紙頭條！</p>
-      <p class="small">🏆 一共有 ${ENDINGS.length} 種結局等你收集。</p>`,
+      <p class="small">🏆 一共有 ${ENDINGS.length} 種結局等你收集。內建事件共 ${LOCAL_EVENTS.length} 則；每天的天氣可能改變行程選擇與收益。</p>
+      <p class="small">🏅 永久加成：智慧 +${getAchievementMeta().bonuses.int}、力量 +${getAchievementMeta().bonuses.str}、魅力 +${getAchievementMeta().bonuses.cha}。解鎖成就後，下一局就能帶著加成出發！</p>`,
     buttons: [{ text: '開始養成 ▶', cls: 'center primary', onClick: () => { closeModal(); say('今天要做什麼呢？'); } }],
   });
 }
 async function restart() {
   if (busyFlag) return;
   if (!state.ended) {
-    const ok = await confirmBox('🔄 重新開始？', '目前的養成進度會消失，但<b>結局圖鑑</b>會保留。', '重新開始', '取消');
+    const ok = await confirmBox('🔄 重新開始？', '目前的養成進度會消失，但<b>結局圖鑑與永久成就加成</b>會保留。', '重新開始', '取消');
     if (!ok) return;
   }
   state = newState();
@@ -1287,6 +1559,7 @@ async function init() {
   buildStats(); renderAll();
   $('btnRank').addEventListener('click', () => showLeaderboard(false));
   $('btnBook').addEventListener('click', () => showBook(false));
+  $('btnAchievements').addEventListener('click', () => showAchievements(false));
   $('btnSettings').addEventListener('click', showSettings);
   $('btnRestart').addEventListener('click', restart);
   $('btnInstall').addEventListener('click', async () => {
