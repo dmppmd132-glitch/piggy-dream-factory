@@ -11,6 +11,21 @@
   // 三項能力都達此值＝傳說級全能豬（外觀變傳說＋隱藏結局）
   const OMNI_MIN = 70;
   const NAME_MAX = 12;
+  const DAILY_RULES_VERSION = 1;
+
+  // 依 UTC 日期產生穩定、公開的每日挑戰種子；版本字串固定後不可任意改動。
+  function dailySeed(date) {
+    if (typeof date !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(date)) return null;
+    const parsed = new Date(date + 'T00:00:00Z');
+    if (!Number.isFinite(parsed.getTime()) || parsed.toISOString().slice(0, 10) !== date) return null;
+    const text = `piggy-dream-factory-daily-v${DAILY_RULES_VERSION}:${date}`;
+    let hash = 2166136261;
+    for (let i = 0; i < text.length; i++) {
+      hash ^= text.charCodeAt(i);
+      hash = Math.imul(hash, 16777619);
+    }
+    return (hash >>> 0) || 1;
+  }
 
   // 多重結局（陣列順序 = 判定優先順序，第一個符合的就是結局）
   const ENDINGS = [
@@ -133,5 +148,5 @@
     return { stats: s, ending, score: calcScore(s, ending) };
   }
 
-  root.PigCore = { OMNI_MIN, NAME_MAX, ENDINGS, pickEnding, calcScore, cleanName, validateSubmission };
+  root.PigCore = { OMNI_MIN, NAME_MAX, DAILY_RULES_VERSION, dailySeed, ENDINGS, pickEnding, calcScore, cleanName, validateSubmission };
 })(typeof globalThis !== 'undefined' ? globalThis : window);

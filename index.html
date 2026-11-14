@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>豬豬夢工場：30天豬生逆襲</title>
-<meta name="description" content="30 天把一隻普通小粉豬養成傳奇豬豬！繁體中文養成模擬網頁遊戲，含 42 則事件、每日天氣、永久成就與 Web Audio 音效，支援 PWA 離線遊玩。">
+<meta name="description" content="30 天把一隻普通小粉豬養成傳奇豬豬！繁體中文養成遊戲，含心情、NPC 好感、道具商店、每日固定挑戰、天氣與成就。">
 <meta name="theme-color" content="#8b5a2b">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" href="icon.svg" type="image/svg+xml">
@@ -74,6 +74,12 @@ button{font-family:inherit}
 }
 .stats{background:#fff3c4;border:3px solid #5e3b1b;border-radius:10px;padding:8px 10px}
 .stat{display:grid;grid-template-columns:76px 1fr 74px;align-items:center;gap:8px;padding:3px 0}
+.relations{margin-top:8px;padding:7px 9px;border:2px dashed #9b7540;border-radius:8px;background:#fff8dc;font-size:.82rem;font-weight:800}
+.relations .relrow{display:flex;justify-content:space-between;gap:8px;padding:2px 0}
+.relations .relbar{height:7px;background:#e0d1a8;border-radius:5px;overflow:hidden;margin-top:2px}
+.relations .relfill{height:100%;background:#f06fa0;transition:width .35s}
+.mode-note{font-size:.75rem;color:#7a6040;text-align:center;margin:6px 0}
+.shop-list{display:grid;gap:8px}.shop-card{display:grid;grid-template-columns:1fr auto;gap:6px;align-items:center;padding:8px;border:2px solid #7f5329;border-radius:8px;background:#fffaf0}.shop-card b{display:block}.shop-card .small{display:block}.shop-actions{display:flex;gap:5px;flex-wrap:wrap;justify-content:flex-end}.shop-actions .mbtn{font-size:.82rem;padding:5px 8px}
 .stat .lbl{font-weight:800;font-size:.9rem;white-space:nowrap}
 .bar{position:relative;height:16px;background:#d9c79a;border:2px solid #5e3b1b;border-radius:5px;overflow:hidden}
 .fill{position:relative;height:100%;width:0;transition:width .5s ease,background .3s}
@@ -232,6 +238,9 @@ body.busy .act{pointer-events:none;opacity:.6}
     <div class="topbtns">
       <button class="tbtn" id="btnInstall" hidden>📲 安裝</button>
       <button class="tbtn" id="btnRank">🏆 排行榜</button>
+      <button class="tbtn" id="btnDaily">📅 每日挑戰</button>
+      <button class="tbtn" id="btnCasual">🌱 一般養成</button>
+      <button class="tbtn" id="btnShop">🛍️ 商店</button>
       <button class="tbtn" id="btnBook">📖 結局圖鑑</button>
       <button class="tbtn" id="btnAchievements">🏅 成就</button>
       <button class="tbtn" id="btnSettings">⚙️ 設定</button>
@@ -244,6 +253,7 @@ body.busy .act{pointer-events:none;opacity:.6}
     <section class="stage wood">
       <div class="stage-view">
         <div class="badges">
+          <div class="badge" id="modeBadge">🌱 一般養成</div>
           <div class="badge">📅 第 <span id="dayNum">1</span> / 30 天</div>
           <div class="badge" id="weatherBadge" aria-live="polite"><span id="weatherNum">☀️ 晴朗</span></div>
           <div class="badge">🪙 <span id="goldNum">100</span> G</div>
@@ -407,6 +417,7 @@ body.busy .act{pointer-events:none;opacity:.6}
       <div class="pigtag" id="pigTitle">平凡小粉豬</div>
 
       <div class="stats" id="stats"></div>
+      <div class="relations" id="relationships" aria-label="NPC 好感度"></div>
     </section>
 
     <!-- 右：筆記本（行程與日記） -->
@@ -436,6 +447,7 @@ body.busy .act{pointer-events:none;opacity:.6}
 const TOTAL_DAYS = 30;
 const MODEL = 'gemini-2.5-flash';
 const SAVE_KEY = 'pdf_save_v1';
+const DAILY_SAVE_KEY = 'pdf_daily_save_v1';
 const BOOK_KEY = 'pdf_endings_v1';
 const API_KEY_STORE = 'pdf_gemini_key';
 const LB_KEY = 'pdf_leaderboard_v1';     // 本機排行榜
@@ -449,14 +461,31 @@ const LB_URL = ((window.PIG_CONFIG && window.PIG_CONFIG.leaderboardUrl) || '').r
 
 // 各數值的上下限
 const { OMNI_MIN, ENDINGS, pickEnding, calcScore, cleanName, NAME_MAX } = PigCore;
-const KEYS = ['stamina', 'int', 'str', 'cha', 'weight', 'gold'];
-const LIMITS = { stamina: [0, 100], int: [0, 100], str: [0, 100], cha: [0, 100], weight: [10, 200], gold: [0, 99999] };
-const LABEL = { stamina: '體力', int: '智慧', str: '力量', cha: '魅力', weight: '體重', gold: '豬豬幣' };
-const UNIT = { stamina: '', int: '', str: '', cha: '', weight: 'kg', gold: 'G' };
+const KEYS = ['stamina', 'int', 'str', 'cha', 'weight', 'gold', 'mood'];
+const LIMITS = { stamina: [0, 100], int: [0, 100], str: [0, 100], cha: [0, 100], weight: [10, 200], gold: [0, 99999], mood: [0, 100] };
+const LABEL = { stamina: '體力', int: '智慧', str: '力量', cha: '魅力', weight: '體重', gold: '豬豬幣', mood: '心情' };
+const UNIT = { stamina: '', int: '', str: '', cha: '', weight: 'kg', gold: 'G', mood: '' };
 
 const clamp = (v, a, b) => Math.min(b, Math.max(a, v));
-const rand = (a, b) => Math.floor(Math.random() * (b - a + 1)) + a;
-const pick = arr => arr[Math.floor(Math.random() * arr.length)];
+function randomFor(s) {
+  if (s && s.mode === 'daily' && Number.isInteger(s.rngState)) {
+    let x = s.rngState >>> 0;
+    x ^= x << 13; x ^= x >>> 17; x ^= x << 5;
+    s.rngState = x >>> 0;
+    return s.rngState / 4294967296;
+  }
+  return Math.random();
+}
+const rand = (a, b, s) => Math.floor(randomFor(s) * (b - a + 1)) + a;
+const pick = (arr, s) => arr[Math.floor(randomFor(s) * arr.length)];
+function utcToday() { return new Date().toISOString().slice(0, 10); }
+function seededShuffle(list, seed) {
+  let x = (Number(seed) >>> 0) || 1;
+  const next = () => { x ^= x << 13; x ^= x >>> 17; x ^= x << 5; x >>>= 0; return x / 4294967296; };
+  const out = list.slice();
+  for (let i = out.length - 1; i > 0; i--) { const j = Math.floor(next() * (i + 1)); [out[i], out[j]] = [out[j], out[i]]; }
+  return out;
+}
 
 // 六個每日行程（main = 主要成長的數值，range = 成長範圍）
 const ACTIONS = [
@@ -467,6 +496,12 @@ const ACTIONS = [
   { id: 'work',    emoji: '🧹', name: '牧場打工', delta: { gold: 40, stamina: -20, cha: -2 } },
   { id: 'sleep',   emoji: '💤', name: '睡大覺休息', delta: { stamina: 50, weight: 1 } },
 ];
+const SHOP_ITEMS = [
+  { id: 'energy_drink', emoji: '🧃', name: '能量飲料', price: 70, desc: '體力 +35、心情 +6', effects: { stamina: 35, mood: 6 } },
+  { id: 'reading_glasses', emoji: '🥽', name: '讀書眼鏡', price: 120, desc: '智慧 +5、心情 +6', effects: { int: 5, mood: 6 } },
+];
+const RELATION_NAMES = { teacher: '母牛老師', truffle: '松露攤老闆' };
+const ACTION_RELATIONS = { library: { teacher: 3 }, charm: { teacher: 1 }, work: { truffle: 2 }, feast: { truffle: 2 } };
 
 const FLAVOR = {
   library: ['豬豬抱著厚厚的書啃了一整天，腦袋鼓鼓的。', '在圖書館發現一本《泥巴與數學》，看得入迷。', '一邊翻書一邊流口水，居然還記住了！'],
@@ -484,8 +519,8 @@ const WEATHER = {
   rainy: { emoji: '🌧️', name: '下雨', tip: '雨天地面太滑，泥巴健身房休館' },
   windy: { emoji: '🍃', name: '微風', tip: '微風吹拂，沒有額外影響' },
 };
-function rollWeather() {
-  const n = rand(1, 100);
+function rollWeather(s) {
+  const n = rand(1, 100, s);
   return n <= 32 ? 'sunny' : n <= 64 ? 'cloudy' : n <= 86 ? 'rainy' : 'windy';
 }
 
@@ -513,15 +548,24 @@ function applyDelta(s, d) {
   return real;
 }
 
-function newState() {
-  const bonus = getAchievementMeta().bonuses;
-  const weather = rollWeather();
-  return {
-    v: 1, day: 1, stamina: 100, int: 10 + bonus.int, str: 10 + bonus.str, cha: 10 + bonus.cha, weight: 30, gold: 100,
-    sickDays: 0, nextEventDay: rand(3, 4), hit: {}, eventTitles: [], log: [],
+function newState(options = {}) {
+  const mode = options.mode === 'daily' ? 'daily' : 'normal';
+  const challengeDate = mode === 'daily' ? options.challengeDate : null;
+  const seed = mode === 'daily' ? ((Number(options.seed) >>> 0) || PigCore.dailySeed(challengeDate) || 1) : null;
+  const bonus = mode === 'daily' ? { int: 0, str: 0, cha: 0 } : getAchievementMeta().bonuses;
+  const s = {
+    v: 1, mode, challengeDate, seed, rngState: seed, dailyEventOrder: [], dailyEventIndex: 0,
+    day: 1, stamina: 100, int: 10 + bonus.int, str: 10 + bonus.str, cha: 10 + bonus.cha, weight: 30, gold: 100, mood: 70,
+    lastActionId: null, sameActionStreak: 0, relationships: { teacher: 0, truffle: 0 }, inventory: {},
+    sickDays: 0, nextEventDay: mode === 'daily' ? 3 : 0, hit: {}, eventTitles: [], log: [],
     pendingEvent: null, ended: false, endingId: null, news: null, hospitalCount: 0, aiEvents: 0,
-    weather, weatherSeen: [weather], noSleepStreak: 0, bestNoSleepStreak: 0, newAchievements: [],
+    weather: null, weatherSeen: [], noSleepStreak: 0, bestNoSleepStreak: 0, newAchievements: [],
   };
+  if (mode === 'daily') s.dailyEventOrder = seededShuffle(LOCAL_EVENTS.map(e => e.title), seed);
+  s.weather = rollWeather(s);
+  s.weatherSeen = [s.weather];
+  if (mode !== 'daily') s.nextEventDay = rand(3, 4, s);
+  return s;
 }
 
 function weatherAction(a, weather = state && state.weather) {
@@ -540,13 +584,21 @@ function willCollapse(s, a) { return s.stamina + (a.delta.stamina || 0) <= 0; }
 // 執行行動（純邏輯）：體力偏低或病後虛弱時，成長打七折
 function runAction(s, a) {
   const d = Object.assign({}, a.delta);
-  let weak = false;
+  if (!Number.isFinite(s.mood)) s.mood = 70;
+  const repeated = s.lastActionId === a.id;
+  const actionMood = { sleep: 10, feast: 7, work: -3 }[a.id] || 0;
+  d.mood = (d.mood || 0) + (repeated ? -12 : 5) + actionMood;
+  let weak = false, lowMood = s.mood < 25;
   if (a.main) {
-    let g = rand(a.range[0], a.range[1]);
+    let g = rand(a.range[0], a.range[1], s);
     if (s.stamina < 25 || s.sickDays > 0) { g = Math.max(1, Math.round(g * 0.7)); weak = true; }
+    if (lowMood) { g = Math.max(1, Math.round(g * 0.75)); weak = true; }
+    else if (s.mood >= 80) g += 1;
     d[a.main] = (d[a.main] || 0) + g;
   }
-  return { real: applyDelta(s, d), weak };
+  s.sameActionStreak = repeated ? (s.sameActionStreak || 1) + 1 : 1;
+  s.lastActionId = a.id;
+  return { real: applyDelta(s, d), weak, lowMood };
 }
 
 // 昏倒住院：扣醫藥費、恢復體力、病後虛弱
@@ -575,6 +627,14 @@ const THRESHOLDS = [
 ];
 function checkEventTrigger(s) {
   if (s.day < 2 || s.day > TOTAL_DAYS) return null;
+  if (s.mode === 'daily') {
+    if (s.day >= s.nextEventDay) {
+      const index = s.dailyEventIndex || 0;
+      s.dailyEventIndex = index + 1;
+      return { reason: '每日挑戰固定事件', tag: null, dailyEventIndex: index };
+    }
+    return null;
+  }
   let found = null;
   for (const [key, cond, tag, reason] of THRESHOLDS) {
     if (cond(s) && !s.hit[key]) {
@@ -729,11 +789,17 @@ const LOCAL_EVENTS = [
   { tag: 'gold', title: '迷你稻草人', emoji: '🌾', story: '農夫做了一個迷你稻草人，想放在攤位上當招牌，卻不知道該怎麼定價。', choices: [
     { text: '替它畫上可愛笑臉', result: '招牌變得超受歡迎，農夫送你一筆小小版稅。', effects: { cha: 3, gold: 18 } },
     { text: '幫忙計算合理價格', result: '你提出公道的售價，稻草人很快就賣光了。', effects: { int: 4, gold: 12 } } ] },
+  { tag: 'int', title: '母牛老師的課後補習', emoji: '🐮', story: '母牛老師帶著教案走來，說可以教你一招只有認真學生才懂的讀書方法。', choices: [
+    { text: '接受私人指導（需好感 20）', result: '老師把最難的題目拆解成小步驟，你的腦袋一下清楚多了。', effects: { int: 6, mood: 4 }, relationship: { teacher: 4 }, requires: { npc: 'teacher', min: 20 } },
+    { text: '幫忙整理教室', result: '你和老師一邊收書一邊聊天，約好下次再一起備課。', effects: { int: 2, cha: 2, mood: 6 }, relationship: { teacher: 3 } } ] },
+  { tag: 'gold', title: '松露攤的秘密試吃', emoji: '🍄', story: '松露攤老闆掀開小布簾，端出一盤新研發的試吃品，說熟客可以先嚐一口。', choices: [
+    { text: '當熟客試吃（需好感 20）', result: '老闆端上招牌松露湯，你吃得心滿意足，還收到一份熟客小禮。', effects: { stamina: 18, mood: 8 }, relationship: { truffle: 4 }, requires: { npc: 'truffle', min: 20 } },
+    { text: '幫忙招呼客人', result: '你替攤位招來不少客人，老闆開心地分你一筆工錢。', effects: { stamina: -5, gold: 22, cha: 2 }, relationship: { truffle: 3 } } ] },
 ];
 
 // 把外部（AI）資料整理成安全的事件物件；格式不對就回傳 null
-const EFFECT_KEY_MAP = { stamina: 'stamina', intelligence: 'int', int: 'int', strength: 'str', str: 'str', charm: 'cha', cha: 'cha', weight: 'weight', gold: 'gold' };
-const EFFECT_RANGE = { stamina: [-30, 30], int: [-5, 10], str: [-5, 10], cha: [-5, 10], weight: [-6, 8], gold: [-60, 90] };
+const EFFECT_KEY_MAP = { stamina: 'stamina', intelligence: 'int', int: 'int', strength: 'str', str: 'str', charm: 'cha', cha: 'cha', weight: 'weight', gold: 'gold', mood: 'mood' };
+const EFFECT_RANGE = { stamina: [-30, 30], int: [-5, 10], str: [-5, 10], cha: [-5, 10], weight: [-6, 8], gold: [-60, 90], mood: [-25, 25] };
 function sanitizeEffects(raw) {
   const out = {};
   if (!raw || typeof raw !== 'object') return out;
@@ -771,6 +837,11 @@ function parseJsonLoose(text) {
 
 // 在地備用事件：優先挑符合觸發原因標籤、且最近沒出現過的
 function pickLocalEvent(s, tag) {
+  if (s.mode === 'daily' && Array.isArray(s.dailyEventOrder) && s.dailyEventOrder.length) {
+    const wanted = s.dailyEventOrder[(s.dailyEventIndex - 1 + s.dailyEventOrder.length) % s.dailyEventOrder.length];
+    const fixed = LOCAL_EVENTS.find(e => e.title === wanted);
+    if (fixed) return JSON.parse(JSON.stringify(fixed));
+  }
   const seenRecently = new Set(recentEventTitles());
   const fresh = LOCAL_EVENTS.filter(e => !s.eventTitles.includes(e.title) && !seenRecently.has(e.title));
   const thisRunFresh = LOCAL_EVENTS.filter(e => !s.eventTitles.includes(e.title));
@@ -817,19 +888,34 @@ let deferredInstall = null;
 let aiWarned = false;
 
 // ---------- 存檔 ----------
-function save() { try { localStorage.setItem(SAVE_KEY, JSON.stringify(state)); } catch (e) { /* 忽略 */ } }
-function loadState() {
+function save() { try { localStorage.setItem(state && state.mode === 'daily' ? DAILY_SAVE_KEY : SAVE_KEY, JSON.stringify(state)); } catch (e) { /* 忽略 */ } }
+function loadState(key = SAVE_KEY) {
   try {
-    const raw = localStorage.getItem(SAVE_KEY);
+    const raw = localStorage.getItem(key);
     if (!raw) return null;
     const s = JSON.parse(raw);
     if (!s || s.v !== 1 || typeof s.day !== 'number') return null;
     const merged = Object.assign(newState(), s);
-    if (!WEATHER[merged.weather]) merged.weather = rollWeather();
+    if (!WEATHER[merged.weather]) merged.weather = rollWeather(merged);
     if (!Array.isArray(merged.weatherSeen)) merged.weatherSeen = [merged.weather];
     if (!Array.isArray(merged.newAchievements)) merged.newAchievements = [];
     if (!Number.isFinite(merged.noSleepStreak)) merged.noSleepStreak = 0;
     if (!Number.isFinite(merged.bestNoSleepStreak)) merged.bestNoSleepStreak = merged.noSleepStreak;
+    merged.mode = merged.mode === 'daily' ? 'daily' : 'normal';
+    if (!Number.isFinite(merged.mood)) merged.mood = 70;
+    if (!Number.isFinite(merged.sameActionStreak)) merged.sameActionStreak = 0;
+    merged.lastActionId = typeof merged.lastActionId === 'string' ? merged.lastActionId : null;
+    merged.relationships = Object.assign({ teacher: 0, truffle: 0 }, merged.relationships && typeof merged.relationships === 'object' ? merged.relationships : {});
+    for (const k of Object.keys(merged.relationships)) merged.relationships[k] = clamp(Number(merged.relationships[k]) || 0, 0, 100);
+    merged.inventory = merged.inventory && typeof merged.inventory === 'object' ? merged.inventory : {};
+    for (const item of SHOP_ITEMS) merged.inventory[item.id] = Math.max(0, Math.floor(Number(merged.inventory[item.id]) || 0));
+    if (merged.mode === 'daily') {
+      if (!merged.challengeDate || !Number.isInteger(merged.seed)) merged.mode = 'normal';
+      else {
+        if (!Number.isInteger(merged.rngState)) merged.rngState = merged.seed;
+        if (!Array.isArray(merged.dailyEventOrder) || !merged.dailyEventOrder.length) merged.dailyEventOrder = seededShuffle(LOCAL_EVENTS.map(e => e.title), merged.seed);
+      }
+    }
     return merged;
   } catch (e) { return null; }
 }
@@ -1002,7 +1088,7 @@ function renderPig() {
 
 // ---------- 數值列 ----------
 const STAT_ROWS = [
-  { k: 'stamina', icon: '⚡' }, { k: 'int', icon: '📘' }, { k: 'str', icon: '💪' }, { k: 'cha', icon: '💖' }, { k: 'weight', icon: '⚖️' },
+  { k: 'stamina', icon: '⚡' }, { k: 'mood', icon: '😊' }, { k: 'int', icon: '📘' }, { k: 'str', icon: '💪' }, { k: 'cha', icon: '💖' }, { k: 'weight', icon: '⚖️' },
 ];
 function buildStats() {
   $('stats').innerHTML = STAT_ROWS.map(r => `
@@ -1011,6 +1097,21 @@ function buildStats() {
       <div class="bar"><div class="fill"></div></div>
       <div class="val"><span class="num"></span><span class="delta"></span></div>
     </div>`).join('');
+}
+function adjustRelationships(s, deltas) {
+  if (!s.relationships) s.relationships = { teacher: 0, truffle: 0 };
+  for (const [npc, amount] of Object.entries(deltas || {})) {
+    if (!(npc in RELATION_NAMES) || !Number.isFinite(Number(amount))) continue;
+    s.relationships[npc] = clamp((Number(s.relationships[npc]) || 0) + Number(amount), 0, 100);
+  }
+}
+function renderRelationships() {
+  const rel = state.relationships || { teacher: 0, truffle: 0 };
+  $('relationships').innerHTML = Object.entries(RELATION_NAMES).map(([key, name]) => {
+    const value = clamp(Number(rel[key]) || 0, 0, 100);
+    return `<div class="relrow"><span>${key === 'teacher' ? '🐮' : '🍄'} ${name}</span><span>${value} / 100</span></div><div class="relbar"><div class="relfill" style="width:${value}%"></div></div>`;
+  }).join('');
+  $('modeBadge').textContent = state.mode === 'daily' ? `📅 每日挑戰 ${state.challengeDate || ''} UTC` : '🌱 一般養成';
 }
 function renderStats() {
   const s = state;
@@ -1024,11 +1125,11 @@ function renderStats() {
       color = v >= 100 ? '#e8584f' : (v >= 70 ? '#f08a3c' : (v <= 20 ? '#7fb2e8' : '#4c9be8'));
     } else {
       pct = v;
-      color = { stamina: v < 30 ? '#e8584f' : (v < 60 ? '#f5c542' : '#6cc04a'), int: '#4c9be8', str: '#f08a3c', cha: '#f06fa0' }[r.k];
+      color = { stamina: v < 30 ? '#e8584f' : (v < 60 ? '#f5c542' : '#6cc04a'), mood: v < 25 ? '#e8584f' : (v < 60 ? '#f5c542' : '#f06fa0'), int: '#4c9be8', str: '#f08a3c', cha: '#f06fa0' }[r.k];
     }
     fill.style.width = pct + '%';
     fill.style.background = color;
-    row.querySelector('.num').textContent = r.k === 'weight' ? v + ' kg' : v + (r.k === 'stamina' ? ' / 100' : '');
+    row.querySelector('.num').textContent = r.k === 'weight' ? v + ' kg' : v + ((r.k === 'stamina' || r.k === 'mood') ? ' / 100' : '');
   }
   $('dayNum').textContent = Math.min(s.day, TOTAL_DAYS);
   $('goldNum').textContent = s.gold;
@@ -1084,12 +1185,40 @@ function renderActions() {
     chips.innerHTML = actionChips(weatherAction(a, state.weather));
   });
 }
+function shopMarkup() {
+  return `<p class="small">用豬豬幣購買一次性道具。背包 ${SHOP_ITEMS.reduce((n, i) => n + ((state.inventory || {})[i.id] || 0), 0)} 件；每日挑戰也可使用商店，但所有玩家起始狀態一致。</p><div class="shop-list">${SHOP_ITEMS.map(item => {
+    const count = (state.inventory || {})[item.id] || 0;
+    return `<div class="shop-card"><div><b>${item.emoji} ${esc(item.name)}｜${item.price}G</b><span class="small">${esc(item.desc)}｜持有 ${count}</span></div><div class="shop-actions"><button class="mbtn center" data-shop-buy="${item.id}" ${state.ended || state.gold < item.price ? 'disabled' : ''}>購買</button><button class="mbtn center primary" data-shop-use="${item.id}" ${state.ended || count < 1 || state.pendingEvent ? 'disabled' : ''}>使用</button></div></div>`;
+  }).join('')}</div>`;
+}
+function showShop() {
+  const m = showModal({ wide: true, title: '🛍️ 豬豬道具商店', html: shopMarkup(), dismiss: true, buttons: [{ text: '關閉', cls: 'center primary', onClick: closeModal }] });
+  const bind = () => {
+    m.body.querySelectorAll('[data-shop-buy]').forEach(b => b.addEventListener('click', () => {
+      const item = SHOP_ITEMS.find(x => x.id === b.dataset.shopBuy);
+      if (!item || state.ended || state.gold < item.price) { toast('豬豬幣不夠，先去打工吧！'); return; }
+      applyDelta(state, { gold: -item.price });
+      state.inventory[item.id] = (state.inventory[item.id] || 0) + 1;
+      adjustRelationships(state, { truffle: 1 });
+      save(); renderAll(); toast(`買到 ${item.name}！松露攤老闆好感 +1`);
+      m.body.innerHTML = shopMarkup(); bind();
+    }));
+    m.body.querySelectorAll('[data-shop-use]').forEach(b => b.addEventListener('click', () => {
+      const item = SHOP_ITEMS.find(x => x.id === b.dataset.shopUse);
+      if (!item || state.ended || state.pendingEvent || !(state.inventory[item.id] > 0)) return;
+      const real = applyDelta(state, item.effects);
+      state.inventory[item.id]--; save(); renderAll(); flash(real); toast(`使用了 ${item.name}`);
+      m.body.innerHTML = shopMarkup(); bind();
+    }));
+  };
+  bind();
+}
 function renderLog() {
   $('log').innerHTML = state.log.length
     ? state.log.map(l => `<li class="${esc(l.cls || '')}"><span class="d">第${l.day}天</span> ${esc(l.text)}</li>`).join('')
     : '<li class="small">還沒有日記，今天就開始吧！</li>';
 }
-function renderAll() { renderStats(); renderPig(); renderWeather(); renderActions(); renderLog(); }
+function renderAll() { renderStats(); renderRelationships(); renderPig(); renderWeather(); renderActions(); renderLog(); }
 
 // ---------- 每日流程 ----------
 async function onAction(id) {
@@ -1105,7 +1234,8 @@ async function onAction(id) {
   setBusy(true);
   const dayDone = state.day;
   const wasSick = state.sickDays > 0;
-  const { real, weak } = runAction(state, a);
+  const { real, weak, lowMood } = runAction(state, a);
+  adjustRelationships(state, ACTION_RELATIONS[id]);
   if (wasSick) state.sickDays = Math.max(0, state.sickDays - 1);
   state.noSleepStreak = id === 'sleep' ? 0 : (state.noSleepStreak || 0) + 1;
   state.bestNoSleepStreak = Math.max(state.bestNoSleepStreak || 0, state.noSleepStreak);
@@ -1114,8 +1244,10 @@ async function onAction(id) {
   if (state.weather === 'sunny' && id === 'work') addLog('☀️ 晴天加成：打工額外賺到 20G！', 'ev');
   if (state.weather === 'rainy' && id !== 'gym') addLog('🌧️ 雨聲滴答作響，泥巴健身房今天休館。', 'ev');
 
-  const flavor = pick(FLAVOR[a.id]);
-  addLog(`${a.emoji} ${flavor}${weak ? '（身體虛弱，成效打七折）' : ''}`);
+  const flavor = pick(FLAVOR[a.id], state);
+  addLog(`${a.emoji} ${flavor}${weak && !lowMood ? '（身體虛弱，成效打七折）' : ''}${lowMood ? '（心情低落，成長打折）' : ''}`);
+  if (state.sameActionStreak >= 2) addLog(`😮‍💨 連續做同一件事第 ${state.sameActionStreak} 天，有點膩了，心情下降。`, 'ev');
+  else addLog('🌈 換個行程試試，豬豬覺得新鮮又開心！', 'ev');
   flash(real);
   say(flavor.length > 16 ? flavor.slice(0, 16) + '…' : flavor);
 
@@ -1129,7 +1261,7 @@ async function onAction(id) {
   }
   state.day = nextDay;
   if (state.day <= TOTAL_DAYS) {
-    state.weather = rollWeather();
+    state.weather = rollWeather(state);
     if (!state.weatherSeen.includes(state.weather)) state.weatherSeen.push(state.weather);
   }
   save();
@@ -1147,14 +1279,14 @@ async function onAction(id) {
 
   const trig = checkEventTrigger(state);
   if (trig) {
-    state.nextEventDay = state.day + rand(3, 4);
+    state.nextEventDay = state.mode === 'daily' ? state.day + 3 : state.day + rand(3, 4, state);
     save();
     await runEvent(trig);
   }
   setBusy(false);
   save();
   renderAll();
-  say(pick({ happy: ['今天心情超好！', '哼哼～再來一份松露！', '我感覺自己無所不能！'], normal: ['今天要做什麼呢？', '準備好了，老闆！', '努力成為傳奇豬！'], tired: ['好累喔…想睡覺…', '腳軟軟的…', '讓我休息一下嘛…'], sick: ['頭暈暈的…', '我覺得…不太舒服…', '需要補充體力…'] }[getMood(state)]));
+  say(pick({ happy: ['今天心情超好！', '哼哼～再來一份松露！', '我感覺自己無所不能！'], normal: ['今天要做什麼呢？', '準備好了，老闆！', '努力成為傳奇豬！'], tired: ['好累喔…想睡覺…', '腳軟軟的…', '讓我休息一下嘛…'], sick: ['頭暈暈的…', '我覺得…不太舒服…', '需要補充體力…'] }[getMood(state)], state));
 }
 
 // ---------- Gemini ----------
@@ -1195,6 +1327,11 @@ function aiFail(e) {
 }
 
 async function getEvent(trig) {
+  if (state.mode === 'daily') {
+    const ev = pickLocalEvent(state, null);
+    ev.source = 'local';
+    return ev;
+  }
   if (getKey()) {
     try {
       const prompt = `你是《豬豬夢工場》的劇情產生器，這是一款溫馨又搞笑的小豬養成遊戲。
@@ -1219,7 +1356,7 @@ async function getNews(ending) {
   const s = state;
   const fallback = () => ({
     headline: ending.headline, subhead: `豬豬日報特別報導：${ending.title}`,
-    article: `${ending.story}\n據悉，這位豬豬主角在 30 天內累積了智慧 ${s.int}、力量 ${s.str}、魅力 ${s.cha}，體重 ${s.weight} 公斤，口袋裡還剩 ${s.gold} 枚豬豬幣。\n${pick(['鄰居們紛紛表示：「我們一直都知道他很特別。」', '牧場長老說：「這孩子的未來，不可限量。」', '本報記者實地採訪，豬豬仍然邊吃點心邊微笑，不願多透露細節。'])}`,
+    article: `${ending.story}\n據悉，這位豬豬主角在 30 天內累積了智慧 ${s.int}、力量 ${s.str}、魅力 ${s.cha}，體重 ${s.weight} 公斤，口袋裡還剩 ${s.gold} 枚豬豬幣。\n${pick(['鄰居們紛紛表示：「我們一直都知道他很特別。」', '牧場長老說：「這孩子的未來，不可限量。」', '本報記者實地採訪，豬豬仍然邊吃點心邊微笑，不願多透露細節。'], s)}`,
     quote: ending.quote, source: 'local',
   });
   if (!getKey()) return fallback();
@@ -1257,7 +1394,9 @@ function presentEvent(ev) {
       buttons: ev.choices.map((c, i) => ({
         text: `${i === 0 ? '🅰️' : '🅱️'} ${esc(c.text)}`,
         onClick: () => {
+          if (c.requires && (Number(state.relationships && state.relationships[c.requires.npc]) || 0) < c.requires.min) { toast(`${RELATION_NAMES[c.requires.npc] || 'NPC'} 好感度需達 ${c.requires.min} 才能選這個選項`); return; }
           const real = applyDelta(state, c.effects);
+          adjustRelationships(state, c.relationship);
           if (state.stamina < 1) { real.stamina = (real.stamina || 0) + (1 - state.stamina); state.stamina = 1; }
           state.eventTitles.push(ev.title);
           if (state.eventTitles.length > 40) state.eventTitles.shift();
@@ -1325,14 +1464,17 @@ async function lbFetch(path, opt) {
     throw e;
   } finally { clearTimeout(timer); }
 }
-const fetchOnlineBoard = () => lbFetch('/api/scores?limit=50');
+const fetchOnlineBoard = (tab = 'online', date = utcToday()) => tab === 'daily'
+  ? lbFetch(`/api/daily-scores?date=${encodeURIComponent(date)}&limit=50`)
+  : lbFetch('/api/scores?limit=50');
 function submitOnline(name) {
   const id = getDeviceId();
   if (!id) return Promise.reject(new Error('無法取得裝置代碼（瀏覽器禁止儲存資料）'));
   const s = state;
-  return lbFetch('/api/scores', {
+  const daily = s.mode === 'daily';
+  return lbFetch(daily ? '/api/daily-scores' : '/api/scores', {
     method: 'POST', headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ deviceId: id, name, stats: { int: s.int, str: s.str, cha: s.cha, weight: s.weight, gold: s.gold, endingId: s.endingId } }),
+    body: JSON.stringify({ deviceId: id, name, ...(daily ? { date: s.challengeDate } : {}), stats: { int: s.int, str: s.str, cha: s.cha, weight: s.weight, gold: s.gold, endingId: s.endingId } }),
   });
 }
 
@@ -1342,7 +1484,7 @@ async function finishGame() {
   state.ended = true; state.endingId = e.id;
   const book = loadBook();
   const first = !book[e.id];
-  state.newAchievements = unlockAchievements(state);
+  state.newAchievements = state.mode === 'daily' ? [] : unlockAchievements(state);
   state.permanentBonus = getAchievementMeta().bonuses;
   if (first) feedback('ending');
   if (state.newAchievements.length) feedback('achievement');
@@ -1379,16 +1521,16 @@ async function showEnding() {
   closeModal();
 
   const buttons = [];
-  if (LB_URL && !up) buttons.push({ text: '📤 上傳線上排行榜', cls: 'center primary', onClick: async el => {
+  if (LB_URL && !up) buttons.push({ text: s.mode === 'daily' ? '📤 上傳每日榜＋總榜' : '📤 上傳線上排行榜', cls: 'center primary', onClick: async el => {
     const name = cleanName($('nameInput').value);
     if (!name) { toast('先幫豬豬取個暱稱吧！'); $('nameInput').focus(); return; }
     setPlayerName(name); renameLocalRun(s.runId, name);
     el.disabled = true; el.textContent = '上傳中…';
     try {
       s.uploaded = await submitOnline(name); save();
-      toast(s.uploaded.newRecord ? `上傳成功！線上第 ${s.uploaded.rank} 名 🎉` : `上傳成功（未破你的最高分），目前第 ${s.uploaded.rank} 名`, 3600);
+      toast(s.mode === 'daily' ? `每日榜第 ${s.uploaded.dailyRank} 名；總榜第 ${s.uploaded.rank} 名` : (s.uploaded.newRecord ? `上傳成功！線上第 ${s.uploaded.rank} 名 🎉` : `上傳成功（未破你的最高分），目前第 ${s.uploaded.rank} 名`), 3600);
       showEnding();
-    } catch (err) { el.disabled = false; el.textContent = '📤 上傳線上排行榜'; toast('上傳失敗：' + err.message, 4000); }
+    } catch (err) { el.disabled = false; el.textContent = s.mode === 'daily' ? '📤 上傳每日榜＋總榜' : '📤 上傳線上排行榜'; toast('上傳失敗：' + err.message, 4000); }
   } });
   buttons.push({ text: '🏆 排行榜', cls: 'center', onClick: () => showLeaderboard(true) });
   buttons.push({ text: '🏅 成就', cls: 'center', onClick: () => showAchievements(true) });
@@ -1404,7 +1546,7 @@ async function showEnding() {
       <div class="endpig"></div>
       <div class="sumrow"><span>📘 智慧 ${s.int}</span><span>💪 力量 ${s.str}</span><span>💖 魅力 ${s.cha}</span><span>⚖️ ${s.weight}kg</span><span>🪙 ${s.gold}G</span></div>
       <div class="scorebox">🏆 綜合分數 <b>${sc.total}</b>
-        <small>能力 ${sc.base} ＋ 豬豬幣 ${sc.goldPts} ＋ 結局稀有度 ${sc.endPts}${lrank ? `｜本機第 ${lrank} 名` : ''}${up ? `｜線上第 ${up.rank} 名` : ''}</small></div>
+        <small>能力 ${sc.base} ＋ 豬豬幣 ${sc.goldPts} ＋ 結局稀有度 ${sc.endPts}${lrank ? `｜本機第 ${lrank} 名` : ''}${up ? (s.mode === 'daily' ? `｜每日第 ${up.dailyRank} 名｜總榜第 ${up.rank} 名` : `｜線上第 ${up.rank} 名`) : ''}</small></div>
       <div class="news">
         <div class="mast">豬豬日報</div>
         <div class="meta"><span>豬曆第 30 天</span><span>${n.source === 'ai' ? '✨ Gemini 特約記者' : '本報編輯部'}</span><span>頭版</span></div>
@@ -1415,7 +1557,7 @@ async function showEnding() {
       </div>
       <p style="margin:8px 0 0"><b>🐷 豬豬暱稱</b>（排行榜顯示用）</p>
       <input class="field" id="nameInput" maxlength="${NAME_MAX}" autocomplete="off" placeholder="最多 ${NAME_MAX} 個字" value="${esc(getPlayerName())}" ${up ? 'disabled' : ''}>
-      <p class="small" style="text-align:center">🏅 永久加成：智慧 +${bonus.int}、力量 +${bonus.str}、魅力 +${bonus.cha}（新局套用）</p>
+      <p class="small" style="text-align:center">${s.mode === 'daily' ? '📅 每日挑戰使用固定起始數值，不套用或解鎖永久成就加成。' : `🏅 永久加成：智慧 +${bonus.int}、力量 +${bonus.str}、魅力 +${bonus.cha}（新局套用）`}</p>
       <p class="small" style="text-align:center">已解鎖結局 ${unlocked} / ${ENDINGS.length}${LB_URL ? '' : '｜尚未設定線上排行榜，成績只會記在這台裝置'}</p>`,
     buttons,
   });
@@ -1439,12 +1581,13 @@ function lbRows(list, mark) {
 }
 function showLeaderboard(fromEnding = false, tab) {
   tab = tab || (LB_URL ? 'online' : 'local');
+  const boardDate = state && state.mode === 'daily' && state.challengeDate ? state.challengeDate : utcToday();
   const m = showModal({
     wide: true, dismiss: !fromEnding, row: true,
     title: '🏆 豬豬排行榜',
-    html: `<div class="tabs"><button class="tab ${tab === 'local' ? 'on' : ''}" data-t="local">📱 本機</button><button class="tab ${tab === 'online' ? 'on' : ''}" data-t="online">🌐 線上</button></div>
+    html: `<div class="tabs"><button class="tab ${tab === 'local' ? 'on' : ''}" data-t="local">📱 本機</button><button class="tab ${tab === 'online' ? 'on' : ''}" data-t="online">🌐 總榜</button><button class="tab ${tab === 'daily' ? 'on' : ''}" data-t="daily">📅 每日榜</button></div>
       <div id="lbBody"></div>
-      <p class="small" style="text-align:center">分數 ＝ 智慧＋力量＋魅力 ＋ 豬豬幣÷10（最多 100）＋ 結局稀有度（每顆星 40，隱藏結局再 +50）</p>`,
+      <p class="small" style="text-align:center">${tab === 'daily' ? `每日榜日期：${boardDate} UTC（每台裝置保留當日最佳）<br>` : ''}分數 ＝ 智慧＋力量＋魅力 ＋ 豬豬幣÷10（最多 100）＋ 結局稀有度（每顆星 40，隱藏結局再 +50）</p>`,
     buttons: [{ text: fromEnding ? '← 回到結局' : '關閉', cls: 'center primary', onClick: () => { if (fromEnding && state.ended) showEnding(); else closeModal(); } }],
   });
   m.body.querySelectorAll('.tab').forEach(b => b.addEventListener('click', () => showLeaderboard(fromEnding, b.dataset.t)));
@@ -1452,7 +1595,7 @@ function showLeaderboard(fromEnding = false, tab) {
   if (tab === 'local') { box.innerHTML = lbRows(loadLocalBoard(), state && state.runId); return; }
   if (!LB_URL) { box.innerHTML = '<div class="lb-empty">這個版本還沒有設定線上排行榜。<br><span class="small">管理員部署好排行榜伺服器後，在 config.js 填入網址即可開啟。</span></div>'; return; }
   box.innerHTML = '<div class="spinner"></div>';
-  fetchOnlineBoard().then(d => {
+  fetchOnlineBoard(tab, boardDate).then(d => {
     if (!document.body.contains(box)) return;     // 使用者已切換或關閉
     box.innerHTML = lbRows(Array.isArray(d.scores) ? d.scores : [], null);
   }).catch(err => {
@@ -1531,16 +1674,43 @@ function showSettings() {
   m.body.querySelector('#hapticToggle').addEventListener('change', e => { try { localStorage.setItem(HAPTIC_KEY, e.target.checked ? '1' : '0'); } catch (err) {} toast(e.target.checked ? '觸覺回饋已開啟' : '觸覺回饋已關閉'); });
   return m;
 }
-function showIntro() {
+async function resolveDailyChallenge() {
+  const fallbackDate = utcToday();
+  if (LB_URL) {
+    try {
+      const remote = await lbFetch('/api/daily-challenge');
+      if (remote && typeof remote.date === 'string' && Number.isInteger(remote.seed) && remote.rulesVersion === PigCore.DAILY_RULES_VERSION) return remote;
+    } catch (e) { toast('每日挑戰伺服器暫時無法連線，改用本機 UTC 種子。', 3200); }
+  }
+  return { date: fallbackDate, seed: PigCore.dailySeed(fallbackDate), rulesVersion: PigCore.DAILY_RULES_VERSION };
+}
+async function startDailyChallenge() {
+  if (busyFlag) return;
+  const challenge = await resolveDailyChallenge();
+  if (!challenge || !challenge.seed) { toast('無法取得今日挑戰種子'); return; }
+  const saved = loadState(DAILY_SAVE_KEY);
+  state = saved && saved.mode === 'daily' && saved.challengeDate === challenge.date && !saved.ended
+    ? saved
+    : newState({ mode: 'daily', challengeDate: challenge.date, seed: challenge.seed });
+  save(); closeModal(); renderAll(); say('今日每日挑戰，全球同一個固定事件順序！'); showIntro('daily');
+}
+function startNormalChallenge() {
+  if (busyFlag) return;
+  state = loadState(SAVE_KEY) || newState();
+  save(); closeModal(); renderAll(); say('一般養成，照你的節奏慢慢培育！');
+  if (state.ended) showEnding(); else showIntro('normal');
+}
+function showIntro(mode = (state && state.mode) || 'normal') {
+  const daily = mode === 'daily';
   showModal({
-    title: '🐷 歡迎來到豬豬夢工場！',
+    row: true, title: daily ? '📅 每日固定挑戰' : '🐷 歡迎來到豬豬夢工場！',
     html: `<div class="big">🌾🐖🌾</div>
       <p>你有 <b>30 天</b>，要把這隻普通的小粉豬養成<b>獨當一面的傳奇豬豬</b>！</p>
       <p>每天選 <b>1 個行動</b>：讀書、健身、練儀態、大吃大喝、打工，或睡覺回血。體力歸零會昏倒住院，記得量力而為。</p>
       <p>途中會遇到<b>突發事件</b>，你的選擇會影響數值。第 30 天結束後，依最終數值解鎖專屬結局與報紙頭條！</p>
       <p class="small">🏆 一共有 ${ENDINGS.length} 種結局等你收集。內建事件共 ${LOCAL_EVENTS.length} 則；每天的天氣可能改變行程選擇與收益。</p>
-      <p class="small">🏅 永久加成：智慧 +${getAchievementMeta().bonuses.int}、力量 +${getAchievementMeta().bonuses.str}、魅力 +${getAchievementMeta().bonuses.cha}。解鎖成就後，下一局就能帶著加成出發！</p>`,
-    buttons: [{ text: '開始養成 ▶', cls: 'center primary', onClick: () => { closeModal(); say('今天要做什麼呢？'); } }],
+      ${daily ? `<p class="scorebox">🌍 ${state.challengeDate} UTC 固定挑戰<small>每日種子、天氣、能力成長與事件順序固定；不套用永久成就加成。事件固定使用內建內容，不受玩家 API Key 影響。</small></p>` : `<p class="small">🏅 永久加成：智慧 +${getAchievementMeta().bonuses.int}、力量 +${getAchievementMeta().bonuses.str}、魅力 +${getAchievementMeta().bonuses.cha}。解鎖成就後，下一局就能帶著加成出發！</p>`}`,
+    buttons: [{ text: daily ? '開始今日挑戰 ▶' : '開始一般養成 ▶', cls: 'center primary', onClick: () => { closeModal(); say(daily ? '固定事件順序已鎖定，開始每日挑戰！' : '今天要做什麼呢？'); } }, { text: daily ? '🌱 切回一般養成' : '📅 改玩每日挑戰', cls: 'center', onClick: () => daily ? startNormalChallenge() : startDailyChallenge() }],
   });
 }
 async function restart() {
@@ -1549,8 +1719,10 @@ async function restart() {
     const ok = await confirmBox('🔄 重新開始？', '目前的養成進度會消失，但<b>結局圖鑑與永久成就加成</b>會保留。', '重新開始', '取消');
     if (!ok) return;
   }
-  state = newState();
-  save(); setBusy(false); closeModal(); renderAll(); say('新的豬生，開始囉！'); showIntro();
+  state = state.mode === 'daily'
+    ? newState({ mode: 'daily', challengeDate: state.challengeDate, seed: state.seed })
+    : newState();
+  save(); setBusy(false); closeModal(); renderAll(); say('新的豬生，開始囉！'); showIntro(state.mode);
 }
 
 // ---------- 啟動 ----------
@@ -1558,6 +1730,9 @@ async function init() {
   state = loadState() || newState();
   buildStats(); renderAll();
   $('btnRank').addEventListener('click', () => showLeaderboard(false));
+  $('btnDaily').addEventListener('click', startDailyChallenge);
+  $('btnCasual').addEventListener('click', startNormalChallenge);
+  $('btnShop').addEventListener('click', showShop);
   $('btnBook').addEventListener('click', () => showBook(false));
   $('btnAchievements').addEventListener('click', () => showAchievements(false));
   $('btnSettings').addEventListener('click', showSettings);
@@ -1578,7 +1753,7 @@ async function init() {
     state.pendingEvent = null; save(); setBusy(false); renderAll();
     return;
   }
-  if (state.day === 1 && state.log.length === 0) showIntro();
+  if (state.day === 1 && state.log.length === 0) showIntro(state.mode);
 }
 
 if ('serviceWorker' in navigator && /^https?:$/.test(location.protocol)) {

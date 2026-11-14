@@ -2,6 +2,7 @@
 name = "piggy-dream-factory-leaderboard"
 main = "src/index.js"
 compatibility_date = "2025-01-01"
+migrations_dir = "migrations"
 
 [vars]
 # 允許呼叫排行榜的網頁來源（填你的 GitHub Pages 網址，不含路徑），多個用逗號分隔
