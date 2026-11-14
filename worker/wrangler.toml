@@ -11,4 +11,4 @@ ALLOWED_ORIGINS = "https://dmppmd132-glitch.github.io,http://localhost:8080"
 [[d1_databases]]
 binding = "DB"
 database_name = "piggy-leaderboard"
-database_id = "請改成 wrangler d1 create 之後印出的 database_id"
+database_id = "9222e7d3-ad92-4547-a259-56160da501b2"

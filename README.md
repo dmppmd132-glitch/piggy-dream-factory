@@ -49,9 +49,11 @@
 ```bash
 cd worker
 npx wrangler login
-npx wrangler d1 create piggy-leaderboard        # 記下印出的 database_id，填進 wrangler.toml
-npx wrangler d1 execute piggy-leaderboard --remote --file=schema.sql
-# 編輯 wrangler.toml：database_id、ALLOWED_ORIGINS（填你的 GitHub Pages 網址，例如 https://<帳號>.github.io）
+# 資料庫 piggy-leaderboard 與資料表已建立好，wrangler.toml 已填入 database_id，這兩步可略過：
+#   npx wrangler d1 create piggy-leaderboard
+#   npx wrangler d1 execute piggy-leaderboard --remote --file=schema.sql
+# 若要換成自己的資料庫，才需要執行上面兩行並改 wrangler.toml 的 database_id。
+# 確認 wrangler.toml 的 ALLOWED_ORIGINS 是你的 GitHub Pages 網址（例如 https://<帳號>.github.io）
 npx wrangler deploy
 ```
 
