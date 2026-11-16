@@ -51,6 +51,11 @@ button{font-family:inherit}
 /* ===== 版面：左邊豬豬、右邊筆記本 ===== */
 .layout{display:grid;grid-template-columns:minmax(300px,430px) 1fr;gap:16px;align-items:start}
 .stage{position:sticky;top:10px}
+@media (max-width:620px){
+  .tbtn .lbl{display:none}
+  .tbtn{padding:5px 9px;font-size:1.05rem}
+  .topbar h1{white-space:nowrap}
+}
 @media (max-width:780px){
   .layout{grid-template-columns:1fr}
   .stage{position:static}
@@ -175,6 +180,38 @@ body.busy .act{pointer-events:none;opacity:.6}
 .bcard .t{font-weight:900;font-size:.95rem}
 .bcard.locked{background:#d8cdb0;color:#7a6a4a}
 .bcard.locked .e{filter:grayscale(1) brightness(.5)}
+/* 天氣 */
+.wxline{margin:0 0 10px;padding:5px 10px;border:2px dashed #b99a5a;border-radius:8px;background:rgba(255,255,255,.55);font-size:.85rem;font-weight:700}
+.act .wx{font-size:.74rem;font-weight:800;color:#2a6f9e}
+.act .wx:empty{display:none}
+.act.blocked{opacity:.45;filter:grayscale(.6)}
+.pigsvg .sky0{stop-color:#9bdcff;transition:stop-color 1s}
+.pigsvg .sky1{stop-color:#fff2c9;transition:stop-color 1s}
+.pigsvg[data-wx=cloudy] .sky0{stop-color:#b9c9d6}
+.pigsvg[data-wx=cloudy] .sky1{stop-color:#eef0ea}
+.pigsvg[data-wx=rainy] .sky0{stop-color:#7f93a8}
+.pigsvg[data-wx=rainy] .sky1{stop-color:#c9d3d8}
+.pigsvg[data-wx=stormy] .sky0{stop-color:#4c5870}
+.pigsvg[data-wx=stormy] .sky1{stop-color:#8b95a3}
+.pigsvg[data-wx=hot] .sky0{stop-color:#ffc27a}
+.pigsvg[data-wx=hot] .sky1{stop-color:#fff0b8}
+.pigsvg[data-wx=cold] .sky0{stop-color:#a9cdea}
+.pigsvg[data-wx=cold] .sky1{stop-color:#eef6fb}
+.pigsvg[data-wx=cloudy] .sunG,.pigsvg[data-wx=rainy] .sunG,.pigsvg[data-wx=stormy] .sunG{opacity:0}
+.pigsvg[data-wx=cold] .sunG{opacity:.55}
+.pigsvg[data-wx=hot] .sunG{transform:scale(1.35);transform-box:fill-box;transform-origin:center}
+.pigsvg[data-wx=hot] .sunG circle{fill:#ff9d2e}
+.sunG{transition:opacity 1s}
+.pigsvg[data-wx=rainy] .cloud ellipse,.pigsvg[data-wx=stormy] .cloud ellipse{fill:#8e9aa8}
+.pigsvg[data-wx=stormy] .cloud ellipse{fill:#5d6674}
+.pigsvg[data-wx=cloudy] .cloud ellipse{fill:#dfe5ea}
+.wx-drop{animation:wxFall linear infinite}
+@keyframes wxFall{from{transform:translateY(-30px)}to{transform:translateY(360px)}}
+.wx-flake{animation:wxSnow linear infinite}
+@keyframes wxSnow{0%{transform:translate(0,-10px)}50%{transform:translate(10px,170px)}100%{transform:translate(-4px,350px)}}
+.lightning{opacity:0;fill:#fff}
+.pigsvg[data-wx=stormy] .lightning{animation:flash 5s infinite}
+@keyframes flash{0%,88%,92%,96%,100%{opacity:0}89%{opacity:.75}93%{opacity:.5}}
 /* 排行榜 */
 .scorebox{margin:8px 0;padding:6px 10px;border:3px solid #5e3b1b;border-radius:8px;background:#fff7d6;text-align:center;font-weight:800}
 .scorebox b{font-size:1.5rem;color:#c25a00}
@@ -229,11 +266,12 @@ body.busy .act{pointer-events:none;opacity:.6}
   <header class="topbar wood">
     <h1>🐷 豬豬夢工場<small>30 天豬生逆襲</small></h1>
     <div class="topbtns">
-      <button class="tbtn" id="btnInstall" hidden>📲 安裝</button>
-      <button class="tbtn" id="btnRank">🏆 排行榜</button>
-      <button class="tbtn" id="btnBook">📖 結局圖鑑</button>
-      <button class="tbtn" id="btnSettings">⚙️ 設定</button>
-      <button class="tbtn" id="btnRestart">🔄 重來</button>
+      <button class="tbtn" id="btnInstall" title="安裝到主畫面" aria-label="安裝到主畫面" hidden>📲<span class="lbl"> 安裝</span></button>
+      <button class="tbtn" id="btnSound" title="音效開關" aria-label="音效開關">🔊</button>
+      <button class="tbtn" id="btnRank" title="排行榜" aria-label="排行榜">🏆<span class="lbl"> 排行榜</span></button>
+      <button class="tbtn" id="btnBook" title="結局圖鑑" aria-label="結局圖鑑">📖<span class="lbl"> 結局圖鑑</span></button>
+      <button class="tbtn" id="btnSettings" title="設定" aria-label="設定">⚙️<span class="lbl"> 設定</span></button>
+      <button class="tbtn" id="btnRestart" title="重新開始" aria-label="重新開始">🔄<span class="lbl"> 重來</span></button>
     </div>
   </header>
 
@@ -243,13 +281,14 @@ body.busy .act{pointer-events:none;opacity:.6}
       <div class="stage-view">
         <div class="badges">
           <div class="badge">📅 第 <span id="dayNum">1</span> / 30 天</div>
+          <div class="badge" id="wxBadge">☀️ 晴天</div>
           <div class="badge">🪙 <span id="goldNum">100</span> G</div>
         </div>
         <div class="bubble" id="bubble">今天要做什麼呢？</div>
 
-        <svg id="pigSvg" viewBox="-10 0 340 340" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="可愛的小粉豬">
+        <svg id="pigSvg" class="pigsvg" viewBox="-10 0 340 340" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="可愛的小粉豬">
           <defs>
-            <linearGradient id="sky" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#9bdcff"/><stop offset="1" stop-color="#fff2c9"/></linearGradient>
+            <linearGradient id="sky" x1="0" y1="0" x2="0" y2="1"><stop class="sky0" offset="0" stop-color="#9bdcff"/><stop class="sky1" offset="1" stop-color="#fff2c9"/></linearGradient>
             <radialGradient id="auraGrad" cx="50%" cy="50%" r="50%"><stop offset="0" stop-color="#fff2a8" stop-opacity=".95"/><stop offset="1" stop-color="#ffd24a" stop-opacity="0"/></radialGradient>
             <path id="heartPath" d="M0 5 C-8 -1 -8 -9 -3.6 -9 C-1.6 -9 0 -7.5 0 -6 C0 -7.5 1.6 -9 3.6 -9 C8 -9 8 -1 0 5 Z"/>
             <path id="starPath" d="M0 -9 L2.2 -2.2 L9 0 L2.2 2.2 L0 9 L-2.2 2.2 L-9 0 L-2.2 -2.2 Z"/>
@@ -257,8 +296,7 @@ body.busy .act{pointer-events:none;opacity:.6}
 
           <!-- 牧場背景 -->
           <rect x="-10" width="340" height="340" fill="url(#sky)"/>
-          <circle cx="268" cy="104" r="30" fill="#ffd95a" opacity=".28"/>
-          <circle cx="268" cy="104" r="21" fill="#ffd95a"/>
+          <g class="sunG"><circle cx="268" cy="104" r="30" fill="#ffd95a" opacity=".28"/><circle cx="268" cy="104" r="21" fill="#ffd95a"/></g>
           <g class="cloud c1"><ellipse cx="70" cy="86" rx="28" ry="11" fill="#fff"/><ellipse cx="92" cy="80" rx="19" ry="10" fill="#fff"/><ellipse cx="52" cy="82" rx="15" ry="8" fill="#fff"/></g>
           <g class="cloud c2"><ellipse cx="200" cy="64" rx="24" ry="9" fill="#fff" opacity=".9"/><ellipse cx="218" cy="59" rx="16" ry="8" fill="#fff" opacity=".9"/></g>
           <path d="M-10 244 Q80 200 170 236 T330 224 V340 H-10Z" fill="#b6e48a"/>
@@ -398,6 +436,8 @@ body.busy .act{pointer-events:none;opacity:.6}
               <circle class="skin" cx="0" cy="8" r="9"/>
             </g>
           </g>
+          <g id="wxLayer" pointer-events="none"></g>
+          <rect class="lightning" x="-10" y="0" width="340" height="340" pointer-events="none"/>
         </svg>
       </div>
 
@@ -411,6 +451,7 @@ body.busy .act{pointer-events:none;opacity:.6}
       <div class="paper">
         <h2>📝 今天要做什麼？</h2>
         <p class="hint">每天只能安排 1 個主要行動。體力太低時，效果會打折；體力歸零會昏倒住院！</p>
+        <div class="wxline" id="wxLine"></div>
         <div class="actions" id="actions"></div>
         <h3>📒 豬豬日記</h3>
         <ul class="log" id="log"></ul>
@@ -421,6 +462,7 @@ body.busy .act{pointer-events:none;opacity:.6}
 
 <script src="config.js"></script>
 <script src="game-core.js"></script>
+<script src="events.js"></script>
 <script>
 'use strict';
 /* =====================================================================
@@ -436,6 +478,8 @@ const SAVE_KEY = 'pdf_save_v1';
 const BOOK_KEY = 'pdf_endings_v1';
 const API_KEY_STORE = 'pdf_gemini_key';
 const LB_KEY = 'pdf_leaderboard_v1';     // 本機排行榜
+const SND_KEY = 'pdf_sound';             // 音效開關
+const VIB_KEY = 'pdf_vibrate';           // 震動開關
 const NAME_KEY = 'pdf_player_name';      // 玩家暱稱
 const DEVICE_KEY = 'pdf_device_id';      // 匿名裝置代碼（線上排行榜用來辨識同一位玩家）
 const LB_URL = ((window.PIG_CONFIG && window.PIG_CONFIG.leaderboardUrl) || '').replace(/\/+$/, '');
@@ -489,20 +533,66 @@ function newState() {
     v: 1, day: 1, stamina: 100, int: 10, str: 10, cha: 10, weight: 30, gold: 100,
     sickDays: 0, nextEventDay: rand(3, 4), hit: {}, eventTitles: [], log: [],
     pendingEvent: null, ended: false, endingId: null, news: null, hospitalCount: 0, aiEvents: 0,
+    weather: 'sunny',
   };
 }
 
+// ---------- 天氣系統 ----------
+// 每天隨機一種天氣，會影響行程的效果，也會影響突發事件的內容
+const WEATHER = {
+  sunny:  { emoji: '☀️', name: '晴天',   tip: '陽光普照，牧場打工多賺 10G。' },
+  cloudy: { emoji: '☁️', name: '陰天',   tip: '天氣涼爽，圖書館、健身房、儀態課少耗 3 點體力。' },
+  rainy:  { emoji: '🌧️', name: '雨天',   tip: '適合窩在圖書館：智慧額外 +2；但打工客人少，少賺 10G。' },
+  hot:    { emoji: '🥵', name: '酷暑',   tip: '太熱了！訓練與打工多耗 5 體力，睡覺只回 40 體力。' },
+  cold:   { emoji: '🥶', name: '寒流',   tip: '泥巴健身房暖身效果好：力量額外 +2；松露大餐多回 10 體力。' },
+  stormy: { emoji: '⛈️', name: '暴風雨', tip: '牧場停工，今天不能打工；睡覺特別安穩，多回 10 體力。' },
+};
+const WEATHER_ODDS = [['sunny', 35], ['cloudy', 25], ['rainy', 20], ['hot', 8], ['cold', 8], ['stormy', 4]];
+function rollWeather() {
+  let r = Math.random() * WEATHER_ODDS.reduce((n, x) => n + x[1], 0);
+  for (const [k, w] of WEATHER_ODDS) { if ((r -= w) < 0) return k; }
+  return 'sunny';
+}
+// 某天氣對某行程的修正：delta＝額外的數值變化、bonus＝主要成長額外加成、blocked＝今天不能做、note＝按鈕上的提示
+function weatherMod(w, id) {
+  const m = { delta: {}, bonus: 0, blocked: null, note: '' };
+  const train = id === 'library' || id === 'gym' || id === 'charm';
+  if (w === 'sunny' && id === 'work') { m.delta.gold = 10; m.note = '☀️ 晴天 金幣 +10'; }
+  else if (w === 'cloudy' && train) { m.delta.stamina = 3; m.note = '☁️ 陰天 體力少耗 3'; }
+  else if (w === 'rainy' && id === 'library') { m.bonus = 2; m.note = '🌧️ 雨天 智慧 +2'; }
+  else if (w === 'rainy' && id === 'work') { m.delta.gold = -10; m.note = '🌧️ 雨天 金幣 −10'; }
+  else if (w === 'hot' && (train || id === 'work')) { m.delta.stamina = -5; m.note = '🥵 酷暑 體力多耗 5'; }
+  else if (w === 'hot' && id === 'sleep') { m.delta.stamina = -10; m.note = '🥵 酷暑 回復減少'; }
+  else if (w === 'cold' && id === 'gym') { m.bonus = 2; m.note = '🥶 寒流 力量 +2'; }
+  else if (w === 'cold' && id === 'feast') { m.delta.stamina = 10; m.note = '🥶 寒流 體力 +10'; }
+  else if (w === 'stormy' && id === 'work') { m.blocked = '暴風雨，牧場今天停工'; m.note = '⛈️ 暴風雨 停工'; }
+  else if (w === 'stormy' && id === 'sleep') { m.delta.stamina = 10; m.note = '⛈️ 暴風雨 體力 +10'; }
+  return m;
+}
+// 套用天氣後，這個行程「實際」的數值變化
+function effDelta(s, a) {
+  const d = Object.assign({}, a.delta), m = weatherMod(s.weather, a.id).delta;
+  for (const k of Object.keys(m)) d[k] = (d[k] || 0) + m[k];
+  return d;
+}
+// 換日：進入新的一天並重新抽天氣
+function advanceDay(s, nextDay) { s.day = nextDay; s.weather = rollWeather(); }
+
 // 檢查這一步能不能做：金幣是否足夠
-function canAfford(s, a) { return s.gold + (a.delta.gold || 0) >= 0; }
+function canAfford(s, a) { return s.gold + (effDelta(s, a).gold || 0) >= 0; }
+// 今天因天氣不能做的原因（沒有則為空字串）
+function blockedReason(s, a) { return weatherMod(s.weather, a.id).blocked || ''; }
+// 今天能不能做：付得起、且沒被天氣擋住
+function canDo(s, a) { return canAfford(s, a) && !blockedReason(s, a); }
 // 做了之後體力會不會歸零（歸零會昏倒）
-function willCollapse(s, a) { return s.stamina + (a.delta.stamina || 0) <= 0; }
+function willCollapse(s, a) { return s.stamina + (effDelta(s, a).stamina || 0) <= 0; }
 
 // 執行行動（純邏輯）：體力偏低或病後虛弱時，成長打七折
 function runAction(s, a) {
-  const d = Object.assign({}, a.delta);
+  const d = effDelta(s, a);
   let weak = false;
   if (a.main) {
-    let g = rand(a.range[0], a.range[1]);
+    let g = rand(a.range[0], a.range[1]) + weatherMod(s.weather, a.id).bonus;
     if (s.stamina < 25 || s.sickDays > 0) { g = Math.max(1, Math.round(g * 0.7)); weak = true; }
     d[a.main] = (d[a.main] || 0) + g;
   }
@@ -547,57 +637,8 @@ function checkEventTrigger(s) {
   return null;
 }
 
-// 內建備用事件（沒有 API Key 或 AI 失敗時使用）
-const LOCAL_EVENTS = [
-  { tag: 'gold', title: '路邊的神祕松露攤', emoji: '🍄', story: '路邊有個戴斗篷的老闆在賣松露，香味一路飄進你的鼻子。老闆壓低聲音說：「小豬，要不要來一份？」',
-    choices: [
-      { text: '掏錢買一份，立刻吃光', result: '松露入口即化，你幸福得直打嗝，只是荷包瘦了一圈。', effects: { stamina: 20, weight: 3, gold: -25 } },
-      { text: '幫老闆搬貨換工錢', result: '你扛了一整車箱子，老闆笑得合不攏嘴，還多給了點小費。', effects: { stamina: -15, str: 2, gold: 30 } } ] },
-  { tag: 'cha', title: '迷路的小雞', emoji: '🐥', story: '一隻小雞哭哭啼啼地拉著你的蹄：「我找不到媽媽了……」遠處的雞舍好像有點遠。',
-    choices: [
-      { text: '牽著小雞護送回家', result: '雞媽媽感動得送你一籃蛋，牧場都誇你是暖心豬。', effects: { stamina: -10, cha: 4, gold: 10 } },
-      { text: '假裝沒看到，先去休息', result: '你睡了個好覺，但夢裡一直有小雞在哭，醒來有點心虛。', effects: { stamina: 15, cha: -3 } } ] },
-  { tag: 'str', title: '泥巴摔角大賽', emoji: '🤼', story: '牧場舉辦年度泥巴摔角大賽，裁判一看到你就舉起大喇叭：「那邊那隻小豬，要不要上場？」',
-    choices: [
-      { text: '捲起袖子上場！', result: '你在泥巴裡滾了十圈，雖然全身髒兮兮，但拿到了人生第一面獎牌。', effects: { stamina: -20, str: 6, gold: 20 } },
-      { text: '當啦啦隊幫大家加油', result: '你的加油聲響徹雲霄，大家都說你是最可愛的啦啦隊長。', effects: { stamina: -5, cha: 4, gold: -5 } } ] },
-  { tag: 'int', title: '知識問答擂台', emoji: '🧠', story: '廣場上擺了一個「豬豬知識問答擂台」，獎金豐厚。主持人拿著麥克風問：「有誰敢來挑戰？」',
-    choices: [
-      { text: '舉手挑戰', result: '你一路過關斬將，連最難的「泥巴的化學式」都答對了！', effects: { stamina: -10, int: 5, gold: 25 } },
-      { text: '躲去樹下睡午覺', result: '你睡得好香，只是醒來時擂台已經收攤了。', effects: { stamina: 15 } } ] },
-  { tag: 'cha', title: '牧場偶像海選', emoji: '🎤', story: '牧場舉辦偶像海選，舞台上閃著五彩燈光。評審席上的老牛眼睛一亮：「那隻小豬，上來秀一段！」',
-    choices: [
-      { text: '上台跳一段圈圈舞', result: '你轉得又快又可愛，台下觀眾尖叫連連！', effects: { stamina: -15, cha: 6 } },
-      { text: '當評審，順便吃點心', result: '你邊吃餅乾邊點評，被大家笑稱「最有說服力的評審」。', effects: { weight: 2, gold: 15 } } ] },
-  { tag: 'int', title: '大野狼來敲門', emoji: '🐺', story: '一隻大野狼笑嘻嘻地站在門口：「小豬小豬，把門打開，我只是想借個鹽巴～」',
-    choices: [
-      { text: '用腦袋智取，反過來請他幫忙', result: '你說服野狼幫忙劈柴，還給了他一張「友善鄰居證」，皆大歡喜。', effects: { int: 4, gold: 10 } },
-      { text: '直接用蠻力把他轟出去', result: '你大喝一聲，野狼嚇得連滾帶爬逃走，你也累得喘吁吁。', effects: { stamina: -15, str: 5 } } ] },
-  { tag: null, title: '下雨天的泥巴浴', emoji: '🌧️', story: '下雨了，牧場的泥巴地變成一池池暖暖的泥巴浴，對豬來說簡直是天堂。',
-    choices: [
-      { text: '跳進去泡個痛快', result: '你舒服得瞇起眼睛，渾身的疲勞都被洗掉了，皮膚還滑滑的。', effects: { stamina: 20, cha: 2 } },
-      { text: '待在屋裡讀書', result: '你窩在被子裡讀了一本好書，雖然有點冷，但收穫滿滿。', effects: { stamina: -5, int: 3 } } ] },
-  { tag: 'weight', title: '神祕老人的魔法蘋果', emoji: '🍎', story: '一位白鬍子老人遞給你一顆閃閃發光的蘋果：「吃了它，身體會變得很輕盈喔。」',
-    choices: [
-      { text: '吃掉魔法蘋果', result: '你的身體輕飄飄的，像是卸下了一袋飼料，只是有點頭暈。', effects: { weight: -3, stamina: -10 } },
-      { text: '轉手把蘋果賣掉', result: '收藏家看到蘋果兩眼發光，立刻開出好價錢。', effects: { gold: 40 } } ] },
-  { tag: 'gold', title: '小豬網紅直播', emoji: '📹', story: '一個小鴨子拿著手機跑來：「我在做直播，要不要一起上鏡？觀眾說想看豬豬！」',
-    choices: [
-      { text: '大方開直播', result: '你對著鏡頭轉圈圈，打賞像雪片一樣飛來。', effects: { stamina: -15, cha: 4, gold: 25 } },
-      { text: '婉拒，回家睡覺', result: '你揮揮蹄走了，睡得很沉，隔天精神飽滿。', effects: { stamina: 20 } } ] },
-  { tag: 'int', title: '想拜師的小老鼠', emoji: '🐭', story: '一隻失業的小老鼠跪在你面前：「大師！請收我為徒！我願意端茶倒水！」',
-    choices: [
-      { text: '收為徒弟，傳授知識', result: '你在教學中也學到了新東西，徒弟還送了你一包乾果。', effects: { int: 3, cha: 2, gold: -10 } },
-      { text: '請他幫忙打工賺錢', result: '小老鼠勤勞地搬了一整天貨，賺來的錢你抽了一成。', effects: { gold: 25 } } ] },
-  { tag: 'weight', title: '吃到飽優惠日', emoji: '🍽️', story: '鎮上新開了一間自助餐，今天開幕大優惠，只要一點點錢就能吃到肚子爆炸！',
-    choices: [
-      { text: '放開肚皮大吃特吃', result: '你吃到天昏地暗，肚子圓得像顆球，但元氣滿滿。', effects: { stamina: 30, weight: 6, gold: -10 } },
-      { text: '只買一份外帶，克制一下', result: '你抱著外帶盒慢慢享用，滿足又不失理智。', effects: { stamina: 10, weight: 1, gold: -5 } } ] },
-  { tag: 'gold', title: '路上撿到錢包', emoji: '👛', story: '你在路邊撿到一個鼓鼓的錢包，裡面有不少豬豬幣，還有一張失主的名片。',
-    choices: [
-      { text: '主動送去失物招領', result: '失主感動得熱淚盈眶，還送你一份謝禮，你的好名聲也傳開了。', effects: { cha: 5, gold: 10 } },
-      { text: '偷偷收進口袋', result: '荷包確實變重了，但你走路總覺得背後有人在盯著你……', effects: { gold: 45, cha: -4 } } ] },
-];
+// 內建備用事件庫在 events.js（window.PIG_EVENTS）
+const LOCAL_EVENTS = (typeof window !== 'undefined' && window.PIG_EVENTS) || [];
 
 // 把外部（AI）資料整理成安全的事件物件；格式不對就回傳 null
 const EFFECT_KEY_MAP = { stamina: 'stamina', intelligence: 'int', int: 'int', strength: 'str', str: 'str', charm: 'cha', cha: 'cha', weight: 'weight', gold: 'gold' };
@@ -637,12 +678,20 @@ function parseJsonLoose(text) {
   return JSON.parse(t.slice(a, b + 1));
 }
 
-// 在地備用事件：優先挑符合觸發原因標籤、且最近沒出現過的
+// 在地備用事件：避開最近出現過的、不合天氣或天數的；符合今天天氣的事件被抽中機率較高
 function pickLocalEvent(s, tag) {
-  const fresh = LOCAL_EVENTS.filter(e => !s.eventTitles.includes(e.title));
-  const pool = fresh.length ? fresh : LOCAL_EVENTS;
+  const okNow = e => (!e.after || s.day >= e.after) && (!e.w || e.w.includes(s.weather));
+  const recent = s.eventTitles.slice(-25);
+  let pool = LOCAL_EVENTS.filter(e => okNow(e) && !recent.includes(e.title));
+  if (!pool.length) pool = LOCAL_EVENTS.filter(okNow);
   const tagged = tag ? pool.filter(e => e.tag === tag) : [];
-  return JSON.parse(JSON.stringify(pick(tagged.length ? tagged : pool)));
+  const from = tagged.length ? tagged : pool;
+  const bag = [];
+  for (const e of from) { const n = e.w ? 4 : 1; for (let i = 0; i < n; i++) bag.push(e); }
+  const e = pick(bag);
+  const c = JSON.parse(JSON.stringify(e));
+  delete c.w; delete c.after;
+  return c;
 }
 
 // 豬豬外觀判定（給 SVG 用）
@@ -716,6 +765,87 @@ function addLog(text, cls = '') {
 }
 function say(text) { $('bubble').textContent = text; }
 
+// ---------- 音效與震動（Web Audio 即時合成，不需要任何音檔） ----------
+const Sfx = (() => {
+  let ctx = null, master = null;
+  const rd = k => { try { return localStorage.getItem(k); } catch (e) { return null; } };
+  const wr = (k, v) => { try { localStorage.setItem(k, v); } catch (e) { /* 忽略 */ } };
+  let soundOn = rd(SND_KEY) !== '0', vibOn = rd(VIB_KEY) !== '0';
+
+  function ensure() {
+    if (!soundOn) return null;
+    if (!ctx) {
+      const AC = window.AudioContext || window.webkitAudioContext;
+      if (!AC) return null;
+      try { ctx = new AC(); master = ctx.createGain(); master.gain.value = 0.5; master.connect(ctx.destination); } catch (e) { return null; }
+    }
+    if (ctx.state === 'suspended') ctx.resume().catch(() => { /* 忽略 */ });
+    return ctx;
+  }
+  // 單音：freq 頻率、d 秒數；o.to＝滑到的頻率、o.at＝延遲幾秒
+  function tone(freq, d, o = {}) {
+    const t = ctx.currentTime + (o.at || 0), osc = ctx.createOscillator(), g = ctx.createGain();
+    osc.type = o.type || 'sine';
+    osc.frequency.setValueAtTime(freq, t);
+    if (o.to) osc.frequency.exponentialRampToValueAtTime(o.to, t + d);
+    g.gain.setValueAtTime(0.0001, t);
+    g.gain.exponentialRampToValueAtTime(o.vol || 0.15, t + 0.012);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + d);
+    osc.connect(g); g.connect(master); osc.start(t); osc.stop(t + d + 0.03);
+  }
+  // 雜訊：翻書、咀嚼、重擊的質感
+  function noise(d, o = {}) {
+    const t = ctx.currentTime + (o.at || 0), len = Math.max(1, Math.floor(ctx.sampleRate * d));
+    const buf = ctx.createBuffer(1, len, ctx.sampleRate), data = buf.getChannelData(0);
+    for (let i = 0; i < len; i++) data[i] = Math.random() * 2 - 1;
+    const src = ctx.createBufferSource(), f = ctx.createBiquadFilter(), g = ctx.createGain();
+    src.buffer = buf; f.type = o.filter || 'lowpass'; f.frequency.value = o.freq || 1000;
+    g.gain.setValueAtTime(0.0001, t);
+    g.gain.exponentialRampToValueAtTime(o.vol || 0.2, t + 0.01);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + d);
+    src.connect(f); f.connect(g); g.connect(master); src.start(t); src.stop(t + d + 0.03);
+  }
+  const arp = (notes, step, o = {}) => notes.forEach((f, i) => tone(f, o.d || step * 1.6, Object.assign({}, o, { at: i * step })));
+
+  const LIB = {
+    tap:       () => tone(620, 0.05, { type: 'square', vol: 0.06 }),
+    library:   () => { noise(0.14, { filter: 'highpass', freq: 3500, vol: 0.12 }); noise(0.12, { at: 0.17, filter: 'highpass', freq: 3000, vol: 0.1 }); tone(660, 0.15, { at: 0.08, vol: 0.07 }); },
+    gym:       () => { tone(130, 0.2, { to: 55, type: 'square', vol: 0.18 }); noise(0.18, { freq: 250, vol: 0.3 }); tone(130, 0.2, { at: 0.28, to: 55, type: 'square', vol: 0.18 }); noise(0.18, { at: 0.28, freq: 250, vol: 0.3 }); },
+    charm:     () => arp([784, 988, 1175, 1568], 0.09, { type: 'triangle', vol: 0.12 }),
+    feast:     () => { [0, 0.11, 0.22].forEach(at => noise(0.07, { at, freq: 900, vol: 0.3 })); arp([330, 392, 523], 0.12, { at: 0.35, type: 'triangle', vol: 0.1 }); },
+    work:      () => { tone(988, 0.07, { type: 'square', vol: 0.08 }); tone(1319, 0.28, { at: 0.07, type: 'square', vol: 0.08 }); },
+    sleep:     () => arp([392, 330, 262, 196], 0.22, { d: 0.5, vol: 0.1 }),
+    good:      () => arp([523, 659, 784], 0.09, { type: 'triangle', vol: 0.12 }),
+    bad:       () => tone(220, 0.35, { to: 140, type: 'sawtooth', vol: 0.1 }),
+    siren:     () => [0, 0.28, 0.56, 0.84].forEach((at, i) => tone(i % 2 ? 880 : 660, 0.26, { at, type: 'square', vol: 0.08 })),
+    event:     () => { tone(880, 0.18, { vol: 0.12 }); tone(1320, 0.4, { at: 0.12, vol: 0.1 }); },
+    milestone: () => arp([523, 659, 784, 1047], 0.1, { type: 'triangle', vol: 0.14, d: 0.22 }),
+    unlock:    () => arp([1047, 1319, 1568, 2093, 1568, 2093], 0.07, { vol: 0.09, d: 0.18 }),
+    ending:    () => { arp([523, 523, 523, 659, 587, 659, 784], 0.17, { type: 'square', vol: 0.09, d: 0.3 }); arp([261, 261, 261, 330, 293, 330, 392], 0.17, { type: 'triangle', vol: 0.1, d: 0.3 }); },
+  };
+  const VIB = { tap: 8, gym: [30, 40, 30], work: [15, 30, 15], good: [15, 30, 15], bad: 90, siren: [200, 80, 200, 80, 300], milestone: [20, 40, 20, 40, 60], unlock: [20, 40, 20, 40, 20, 40, 80], ending: [60, 40, 60, 40, 160], event: [20, 30, 40] };
+
+  return {
+    get sound() { return soundOn; }, get vib() { return vibOn; },
+    setSound(v) { soundOn = !!v; wr(SND_KEY, soundOn ? '1' : '0'); if (soundOn) this.play('tap'); },
+    setVib(v) { vibOn = !!v; wr(VIB_KEY, vibOn ? '1' : '0'); if (vibOn) this.vibrate(VIB.good); },
+    vibrate(p) { if (vibOn && p && navigator.vibrate) { try { navigator.vibrate(p); } catch (e) { /* 忽略 */ } } },
+    play(name) {
+      try { const c = ensure(); if (c && LIB[name]) LIB[name](); } catch (e) { /* 音效失敗不影響遊戲 */ }
+      this.vibrate(VIB[name]);
+    },
+  };
+})();
+function refreshSoundBtn() { const b = $('btnSound'); if (b) b.textContent = Sfx.sound ? '🔊' : '🔇'; }
+// 能力突破 40 / 70 時給點鼓勵
+function checkMilestones(before) {
+  const hits = [];
+  for (const [k, name] of [['int', '智慧'], ['str', '力量'], ['cha', '魅力']]) {
+    for (const t of [40, 70]) if (before[k] < t && state[k] >= t) hits.push(`${name}突破 ${t}！`);
+  }
+  if (hits.length) { setTimeout(() => Sfx.play('milestone'), 350); toast('📈 ' + hits.join('　'), 2600); }
+}
+
 // ---------- 彈窗 ----------
 function closeModal() { const o = document.getElementById('modalOverlay'); if (o) o.remove(); }
 function showModal({ title = '', html = '', buttons = [], wide = false, row = false, dismiss = false }) {
@@ -734,7 +864,7 @@ function showModal({ title = '', html = '', buttons = [], wide = false, row = fa
     const el = document.createElement('button');
     el.className = 'mbtn ' + (b.cls || '');
     el.innerHTML = b.text;
-    el.addEventListener('click', () => b.onClick && b.onClick(el));
+    el.addEventListener('click', () => { Sfx.play('tap'); if (b.onClick) b.onClick(el); });
     bar.appendChild(el);
   });
   if (buttons.length) inner.appendChild(bar);
@@ -853,15 +983,18 @@ function renderActions() {
       <button class="act" data-id="${a.id}">
         <span class="name">${a.emoji} ${a.name}</span>
         <span class="chips">${actionChips(a)}</span>
+        <span class="wx"></span>
         <span class="warn" hidden>⚠️ 體力會歸零，會昏倒住院！</span>
       </button>`).join('');
     box.querySelectorAll('.act').forEach(b => b.addEventListener('click', () => onAction(b.dataset.id)));
   }
   box.querySelectorAll('.act').forEach(b => {
     const a = ACTIONS.find(x => x.id === b.dataset.id);
-    const poor = !canAfford(state, a);
-    b.disabled = poor || state.ended;
-    b.title = poor ? '豬豬幣不夠囉' : '';
+    const poor = !canAfford(state, a), block = blockedReason(state, a);
+    b.disabled = poor || !!block || state.ended;
+    b.classList.toggle('blocked', !!block);
+    b.title = block || (poor ? '豬豬幣不夠囉' : '');
+    b.querySelector('.wx').textContent = weatherMod(state.weather, a.id).note;
     const danger = willCollapse(state, a);
     b.classList.toggle('danger', danger);
     b.querySelector('.warn').hidden = !danger;
@@ -872,18 +1005,51 @@ function renderLog() {
     ? state.log.map(l => `<li class="${esc(l.cls || '')}"><span class="d">第${l.day}天</span> ${esc(l.text)}</li>`).join('')
     : '<li class="small">還沒有日記，今天就開始吧！</li>';
 }
-function renderAll() { renderStats(); renderPig(); renderActions(); renderLog(); }
+// ---------- 天氣畫面 ----------
+function buildWxLayer(w) {
+  const g = $('wxLayer'), NS = 'http://www.w3.org/2000/svg';
+  g.textContent = '';
+  const mk = (tag, attrs) => { const e = document.createElementNS(NS, tag); for (const k in attrs) e.setAttribute(k, attrs[k]); return e; };
+  const n = { rainy: 26, stormy: 46, cold: 24 }[w] || 0;
+  for (let i = 0; i < n; i++) {
+    const x = (Math.random() * 350 - 15).toFixed(1);
+    if (w === 'cold') {
+      const f = mk('circle', { cx: x, cy: 0, r: (1.6 + Math.random() * 2).toFixed(1), fill: '#fff', opacity: '.9', class: 'wx-flake' });
+      f.style.animationDuration = (6 + Math.random() * 5).toFixed(1) + 's';
+      f.style.animationDelay = '-' + (Math.random() * 10).toFixed(1) + 's';
+      g.appendChild(f);
+    } else {
+      const len = w === 'stormy' ? 20 : 14;
+      const d = mk('line', { x1: x, y1: 0, x2: (x - 5).toString(), y2: len, stroke: w === 'stormy' ? '#d6e6f5' : '#cfe8ff', 'stroke-width': w === 'stormy' ? 1.8 : 1.4, 'stroke-linecap': 'round', opacity: '.75', class: 'wx-drop' });
+      d.style.animationDuration = (w === 'stormy' ? 0.5 + Math.random() * 0.3 : 0.75 + Math.random() * 0.35).toFixed(2) + 's';
+      d.style.animationDelay = '-' + (Math.random() * 1.2).toFixed(2) + 's';
+      g.appendChild(d);
+    }
+  }
+}
+function renderWeather() {
+  const key = WEATHER[state.weather] ? state.weather : 'sunny';
+  const w = WEATHER[key];
+  $('wxBadge').textContent = w.emoji + ' ' + w.name;
+  $('wxLine').innerHTML = `今日天氣：<b>${w.emoji} ${w.name}</b>　${esc(w.tip)}`;
+  const svg = $('pigSvg');
+  if (svg.dataset.wx !== key) { svg.dataset.wx = key; buildWxLayer(key); }
+}
+function renderAll() { renderStats(); renderPig(); renderWeather(); renderActions(); renderLog(); }
 
 // ---------- 每日流程 ----------
 async function onAction(id) {
   if (busyFlag || state.ended || state.pendingEvent) return;
   const a = ACTIONS.find(x => x.id === id);
-  if (!canAfford(state, a)) { toast('豬豬幣不夠囉！先去打工吧'); return; }
+  if (blockedReason(state, a)) { toast(blockedReason(state, a)); Sfx.play('bad'); return; }
+  if (!canAfford(state, a)) { toast('豬豬幣不夠囉！先去打工吧'); Sfx.play('bad'); return; }
   if (willCollapse(state, a)) {
     const ok = await confirmBox('⚠️ 體力快撐不住了', '做完這個行動，體力會歸零，豬豬會<b>昏倒住院 2 天</b>並扣醫藥費。<br>確定要硬撐嗎？', '硬撐！', '我再想想');
     if (!ok) return;
   }
   setBusy(true);
+  Sfx.play(a.id);
+  const before = { int: state.int, str: state.str, cha: state.cha };
   const dayDone = state.day;
   const wasSick = state.sickDays > 0;
   const { real, weak } = runAction(state, a);
@@ -892,6 +1058,7 @@ async function onAction(id) {
   const flavor = pick(FLAVOR[a.id]);
   addLog(`${a.emoji} ${flavor}${weak ? '（身體虛弱，成效打七折）' : ''}`);
   flash(real);
+  checkMilestones(before);
   say(flavor.length > 16 ? flavor.slice(0, 16) + '…' : flavor);
 
   let nextDay = dayDone + 1;
@@ -901,11 +1068,12 @@ async function onAction(id) {
     nextDay = dayDone + 3;     // 當天昏倒 + 住院 2 天
     addLog(`🏥 體力歸零昏倒！住院休息 2 天，醫藥費 ${hosp.fee}G。`, 'bad');
   }
-  state.day = nextDay;
+  advanceDay(state, nextDay);
   save();
   renderAll();
 
   if (hosp) {
+    Sfx.play('siren');
     await new Promise(res => showModal({
       title: '🏥 昏倒住院！',
       html: `<div class="big">🤒</div><p>豬豬體力歸零，被緊急送進牧場醫院。<br>強制休息 <b>2 天</b>，支付醫藥費 <b>${hosp.fee}G</b>。</p><p class="small">出院後體力恢復到 60，但身體還很虛弱，下次行動成效打七折。</p>`,
@@ -958,7 +1126,7 @@ async function callGemini(prompt) {
   throw lastErr;
 }
 function stateBrief(s) {
-  return `第${Math.min(s.day, TOTAL_DAYS)}天／共30天；體力${s.stamina}/100、智慧${s.int}、力量${s.str}、魅力${s.cha}、體重${s.weight}kg、豬豬幣${s.gold}G`;
+  return `第${Math.min(s.day, TOTAL_DAYS)}天／共30天；體力${s.stamina}/100、智慧${s.int}、力量${s.str}、魅力${s.cha}、體重${s.weight}kg、豬豬幣${s.gold}G；今天天氣：${(WEATHER[s.weather] || WEATHER.sunny).name}`;
 }
 function aiFail(e) {
   if (!aiWarned && e && e.message !== 'NO_KEY') { aiWarned = true; toast('AI 連線失敗，改用內建內容（請檢查 API Key 與網路）', 3600); }
@@ -971,7 +1139,7 @@ async function getEvent(trig) {
 目前狀態：${stateBrief(state)}。
 觸發原因：${trig.reason}。
 最近發生過的事件（請避免重複）：${state.eventTitles.slice(-5).join('、') || '無'}。
-請依這隻小豬目前的數值特色，寫一個「突發事件」，語氣幽默溫暖，使用繁體中文（台灣用語），事件要與目前的數值或觸發原因有關。
+請依這隻小豬目前的數值特色，寫一個「突發事件」，語氣幽默溫暖，使用繁體中文（台灣用語），事件要與目前的數值或觸發原因有關，若合適可結合今天的天氣。
 只回傳純 JSON，不要 markdown、不要任何說明文字，格式如下：
 {"title":"事件標題(12字內)","emoji":"一個emoji","story":"事件描述，60~100字","choices":[{"text":"選項文字(20字內)","result":"選擇後的結果描述，40~70字","effects":{"stamina":0,"intelligence":0,"strength":0,"charm":0,"weight":0,"gold":0}},{"text":"...","result":"...","effects":{"stamina":0,"intelligence":0,"strength":0,"charm":0,"weight":0,"gold":0}}]}
 數值規則（整數）：stamina 在 -25~25；intelligence、strength、charm 在 -4~8；weight 在 -4~5（公斤）；gold 在 -50~80。兩個選項要有取捨（例如一個賺錢、一個提升能力），不要兩個都是好處。`;
@@ -1020,6 +1188,7 @@ async function runEvent(trig) {
 }
 function presentEvent(ev) {
   return new Promise(resolve => {
+    Sfx.play('event');
     const tag = ev.source === 'ai' ? '<span class="tag-ai">✨ Gemini</span>' : '<span class="tag-local tag-ai">內建</span>';
     const m = showModal({
       title: `${esc(ev.title)}${tag}`,
@@ -1027,8 +1196,12 @@ function presentEvent(ev) {
       buttons: ev.choices.map((c, i) => ({
         text: `${i === 0 ? '🅰️' : '🅱️'} ${esc(c.text)}`,
         onClick: () => {
+          const before = { int: state.int, str: state.str, cha: state.cha };
           const real = applyDelta(state, c.effects);
           if (state.stamina < 1) { real.stamina = (real.stamina || 0) + (1 - state.stamina); state.stamina = 1; }
+          const net = (real.int || 0) + (real.str || 0) + (real.cha || 0) + (real.gold || 0) / 10 + (real.stamina || 0) / 10;
+          Sfx.play(net >= 0 ? 'good' : 'bad');
+          checkMilestones(before);
           state.eventTitles.push(ev.title);
           if (state.eventTitles.length > 20) state.eventTitles.shift();
           if (ev.source === 'ai') state.aiEvents++;
@@ -1120,6 +1293,8 @@ async function finishGame() {
   state.uploaded = null;
   addLocalScore({ id: state.runId, name: getPlayerName() || '無名豬豬', score: sc.total, endingId: e.id, int: state.int, str: state.str, cha: state.cha, weight: state.weight, gold: state.gold, at: Date.now() });
   save(); renderAll();
+  Sfx.play('ending');
+  if (first) setTimeout(() => Sfx.play('unlock'), 1900);
   await showEnding();
 }
 async function showEnding() {
@@ -1148,7 +1323,7 @@ async function showEnding() {
     el.disabled = true; el.textContent = '上傳中…';
     try {
       s.uploaded = await submitOnline(name); save();
-      toast(s.uploaded.newRecord ? `上傳成功！線上第 ${s.uploaded.rank} 名 🎉` : `上傳成功（未破你的最高分），目前第 ${s.uploaded.rank} 名`, 3600);
+      Sfx.play('good'); toast(s.uploaded.newRecord ? `上傳成功！線上第 ${s.uploaded.rank} 名 🎉` : `上傳成功（未破你的最高分），目前第 ${s.uploaded.rank} 名`, 3600);
       showEnding();
     } catch (err) { el.disabled = false; el.textContent = '📤 上傳線上排行榜'; toast('上傳失敗：' + err.message, 4000); }
   } });
@@ -1242,6 +1417,7 @@ function showSettings() {
   const m = showModal({
     title: '⚙️ 設定', dismiss: true,
     html: `
+      <p><label><input type="checkbox" id="optSnd" ${Sfx.sound ? 'checked' : ''}> 🔊 音效</label>　<label><input type="checkbox" id="optVib" ${Sfx.vib ? 'checked' : ''}> 📳 震動（支援的手機）</label></p>
       <p><b>Gemini API Key</b>（選填）</p>
       <p class="small">填入後，突發事件與結局報導會由 <code>${MODEL}</code> 即時生成；不填則使用內建內容。金鑰只會存在這台裝置的瀏覽器，並直接傳送給 Google。<br>
       取得方式：<a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener">Google AI Studio</a></p>
@@ -1258,6 +1434,8 @@ function showSettings() {
       { text: '關閉', cls: 'center', onClick: closeModal },
     ],
   });
+  $('optSnd').addEventListener('change', e => { Sfx.setSound(e.target.checked); refreshSoundBtn(); });
+  $('optVib').addEventListener('change', e => Sfx.setVib(e.target.checked));
   return m;
 }
 function showIntro() {
@@ -1285,6 +1463,8 @@ async function restart() {
 async function init() {
   state = loadState() || newState();
   buildStats(); renderAll();
+  refreshSoundBtn();
+  $('btnSound').addEventListener('click', () => { Sfx.setSound(!Sfx.sound); refreshSoundBtn(); });
   $('btnRank').addEventListener('click', () => showLeaderboard(false));
   $('btnBook').addEventListener('click', () => showBook(false));
   $('btnSettings').addEventListener('click', showSettings);
