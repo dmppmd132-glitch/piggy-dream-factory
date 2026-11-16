@@ -145,6 +145,7 @@ button{font-family:inherit}
 .act.danger{border-color:#b3302a;box-shadow:0 4px 0 #b3302a}
 .act .warn{font-size:.74rem;color:#b3302a;font-weight:800}
 .act .weather-note{font-size:.74rem;color:#2874a6;font-weight:800}
+.act .minigame-note{font-size:.74rem;color:#8a5a18;font-weight:800}
 .chips{display:flex;flex-wrap:wrap;gap:4px}
 .chip{font-size:.72rem;padding:0 6px;border-radius:10px;border:1px solid;font-weight:800;white-space:nowrap}
 .chip.up{background:#e3f7d8;border-color:#7cbf5a;color:#2f7a1a}
@@ -173,6 +174,10 @@ body.busy .act{pointer-events:none;opacity:.6}
 .modal p{margin:6px 0}
 .modal-btns{display:flex;flex-direction:column;gap:9px;margin-top:12px}
 .modal-btns.row{flex-direction:row;flex-wrap:wrap;justify-content:center}
+.minigame-intro{text-align:center}.minigame-intro .big{margin-bottom:2px}.minigame-status{display:flex;justify-content:space-between;gap:8px;margin:8px 0;padding:6px 9px;border:2px dashed #9b7540;border-radius:8px;background:#fff8dc;font-weight:800}
+.hay-field{position:relative;height:190px;margin:8px 0;border:3px solid #8b6a2e;border-radius:10px;overflow:hidden;background:linear-gradient(#a9dcf5 0 43%,#8bc85c 43% 100%)}
+.hay-field::before{content:"☁️ 牧場的風呼呼吹～";position:absolute;top:8px;left:10px;color:#4b7c96;font-size:.75rem;font-weight:800}.hay-target{position:absolute;display:grid;place-items:center;width:64px;height:54px;border:3px solid #7a4c1e;border-radius:12px;background:#e4a83b;box-shadow:0 4px 0 #7a4c1e;cursor:pointer;font-size:2rem;transition:left .12s,top .12s,transform .08s}.hay-target:active{transform:scale(.9) translateY(3px);box-shadow:0 1px 0 #7a4c1e}
+.memory-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:7px;margin:10px 0}.memory-card{min-height:58px;border:3px solid #5e3b1b;border-radius:8px;background:#bd7b3e;color:#fff8dc;box-shadow:0 3px 0 #5e3b1b;cursor:pointer;font-size:1.55rem;font-weight:900}.memory-card.open,.memory-card.matched{background:#fff3c4;color:#4b2f14}.memory-card.matched{border-color:#6aa84f;box-shadow:0 3px 0 #6aa84f}.memory-card:disabled{cursor:default}
 .mbtn{
   border:3px solid var(--wood-dark);border-radius:8px;background:#fffaf0;color:var(--ink);padding:9px 12px;font-size:1rem;font-weight:800;
   cursor:pointer;box-shadow:0 4px 0 var(--wood-dark);text-align:left
@@ -559,8 +564,16 @@ const SHOP_ITEMS = [
   { id: 'energy_drink', emoji: '🧃', name: '能量飲料', price: 70, desc: '體力 +35、心情 +6', effects: { stamina: 35, mood: 6 } },
   { id: 'reading_glasses', emoji: '🥽', name: '讀書眼鏡', price: 120, desc: '智慧 +5、心情 +6', effects: { int: 5, mood: 6 } },
 ];
+const MINIGAME_ITEMS = [
+  { id: 'hay_gloves', emoji: '🧤', name: '金色乾草手套', desc: '下一次接乾草小遊戲自動接住 2 捆', source: 'work' },
+  { id: 'golden_bookmark', emoji: '🔖', name: '黃金書籤', desc: '下一次翻牌配對小遊戲自動完成 1 組', source: 'library' },
+];
+const ALL_ITEMS = SHOP_ITEMS.concat(MINIGAME_ITEMS);
 const RELATION_NAMES = { teacher: '母牛老師', truffle: '松露攤老闆' };
 const ACTION_RELATIONS = { library: { teacher: 3 }, charm: { teacher: 1 }, work: { truffle: 2 }, feast: { truffle: 2 } };
+const MINIGAME_IDS = new Set(['work', 'library']);
+const MINIGAME_NAMES = { work: '點擊接乾草', library: '翻牌配對' };
+const MINIGAME_HARD_DAY = 8;
 
 const FLAVOR = {
   library: ['豬豬抱著厚厚的書啃了一整天，腦袋鼓鼓的。', '在圖書館發現一本《泥巴與數學》，看得入迷。', '一邊翻書一邊流口水，居然還記住了！'],
@@ -668,9 +681,11 @@ function canAfford(s, a) { return s.gold + (effectiveDelta(s, a).gold || 0) >= 0
 function willCollapse(s, a) { return s.stamina + (effectiveDelta(s, a).stamina || 0) <= 0; }
 
 // 執行行動（純邏輯）：體力偏低或病後虛弱時，成長打七折；個性再調整消耗與成長
-function runAction(s, a) {
+function runAction(s, a, quality = 1) {
   const p = getPersonality(s);
   const d = effectiveDelta(s, a);
+  const miniQuality = MINIGAME_IDS.has(a.id) ? clamp(Number(quality) || 1, 0.65, 1.35) : 1;
+  if (MINIGAME_IDS.has(a.id) && d.gold) d.gold = Math.round(d.gold * miniQuality);
   if (!Number.isFinite(s.mood)) s.mood = 70;
   const repeated = s.lastActionId === a.id;
   const actionMood = { sleep: 10, feast: 7, work: -3 }[a.id] || 0;
@@ -683,7 +698,7 @@ function runAction(s, a) {
     if (s.stamina < 25 || s.sickDays > 0) { g = Math.max(1, Math.round(g * 0.7)); weak = true; }
     if (lowMood) { g = Math.max(1, Math.round(g * 0.75)); weak = true; }
     else if (s.mood >= 80) g += 1;
-    g = Math.max(1, Math.round(g * PigPersonalities.growthFor(p, a.main)));
+    g = Math.max(1, Math.round(g * PigPersonalities.growthFor(p, a.main) * miniQuality));
     d[a.main] = (d[a.main] || 0) + g;
   }
   s.sameActionStreak = repeated ? (s.sameActionStreak || 1) + 1 : 1;
@@ -1075,7 +1090,7 @@ function loadState(key = SAVE_KEY) {
     merged.relationships = Object.assign({ teacher: 0, truffle: 0 }, merged.relationships && typeof merged.relationships === 'object' ? merged.relationships : {});
     for (const k of Object.keys(merged.relationships)) merged.relationships[k] = clamp(Number(merged.relationships[k]) || 0, 0, 100);
     merged.inventory = merged.inventory && typeof merged.inventory === 'object' ? merged.inventory : {};
-    for (const item of SHOP_ITEMS) merged.inventory[item.id] = Math.max(0, Math.floor(Number(merged.inventory[item.id]) || 0));
+    for (const item of ALL_ITEMS) merged.inventory[item.id] = Math.max(0, Math.floor(Number(merged.inventory[item.id]) || 0));
     if (merged.mode === 'daily') {
       if (!merged.challengeDate || !Number.isInteger(merged.seed)) merged.mode = 'normal';
       else {
@@ -1411,6 +1426,7 @@ function renderActions() {
       <button class="act" data-id="${a.id}">
         <span class="name">${a.emoji} ${a.name}</span>
         <span class="chips">${actionChips(a)}</span>
+        ${MINIGAME_IDS.has(a.id) ? `<span class="minigame-note">🎮 ${MINIGAME_NAMES[a.id]}：${miniGameModeLabel(miniGameMode(state))}，成績影響${a.id === 'work' ? '工錢' : '智慧成長'}${((state.inventory || {})[a.id === 'work' ? 'hay_gloves' : 'golden_bookmark'] || 0) ? `｜🎁 道具 ×${(state.inventory || {})[a.id === 'work' ? 'hay_gloves' : 'golden_bookmark']}` : ''}</span>` : ''}
         <span class="warn" hidden>⚠️ 體力會歸零，會昏倒住院！</span>
         <span class="weather-note" hidden></span>
       </button>`).join('');
@@ -1475,6 +1491,118 @@ function renderLog() {
 }
 function renderAll() { renderStats(); renderRelationships(); renderPig(); renderWeather(); renderActions(); renderLog(); }
 
+// ---------- 行程小遊戲 ----------
+function miniGameMultiplier(score) {
+  return Number((0.65 + clamp(Number(score) || 0, 0, 1) * 0.7).toFixed(2));
+}
+function miniGameOutcome(id, score, detail) {
+  const multiplier = miniGameMultiplier(score);
+  const percent = Math.round(multiplier * 100);
+  return { id, score: clamp(Number(score) || 0, 0, 1), multiplier, detail, label: `${MINIGAME_NAMES[id]} ${detail}，本次收益 ${percent}%` };
+}
+function miniGameMode(s = state) { return Number(s && s.day) >= MINIGAME_HARD_DAY ? 'hard' : 'standard'; }
+function miniGameModeLabel(mode) { return mode === 'hard' ? '🔥 困難模式' : '🌱 標準模式'; }
+function playHayGame() {
+  return new Promise(resolve => {
+    const mode = miniGameMode();
+    const targetCount = mode === 'hard' ? 12 : 10;
+    const intervalMs = mode === 'hard' ? 650 : 850;
+    const hasGloves = (state.inventory && state.inventory.hay_gloves > 0);
+    if (hasGloves) state.inventory.hay_gloves--;
+    let round = 0, hits = hasGloves ? 2 : 0, active = true, timer;
+    let target, status;
+    const moveTarget = () => {
+      if (!target) return;
+      target.style.left = `${8 + Math.floor(randomFor(state) * 78)}%`;
+      target.style.top = `${22 + Math.floor(randomFor(state) * 60)}%`;
+    };
+    const finish = (skipped = false) => {
+      if (!active) return;
+      active = false; clearInterval(timer); closeModal();
+      resolve(skipped ? miniGameOutcome('work', 0.14, '略過小遊戲') : miniGameOutcome('work', hits / targetCount, `接到 ${hits} / ${targetCount} 捆（${miniGameModeLabel(mode)}）`));
+    };
+    const m = showModal({
+      wide: true, title: '🧹 點擊接乾草',
+      html: `<div class="minigame-intro"><div class="big">🌾</div><p>${miniGameModeLabel(mode)}：乾草從四面八方飛來！在 ${targetCount} 捆乾草落地前，點擊乾草把它接住。${hasGloves ? '<br>🧤 金色乾草手套發動：自動接住 2 捆！' : ''}</p></div><div class="minigame-status"><span id="hayStatus">接到 ${hits} / ${targetCount}</span><span>點擊乾草得分</span></div><div class="hay-field"><button type="button" class="hay-target" aria-label="點擊乾草">🌾</button></div>`,
+      buttons: [{ text: '略過，拿基本工錢', cls: 'center', onClick: () => finish(true) }],
+    });
+    target = m.body.querySelector('.hay-target'); status = m.body.querySelector('#hayStatus');
+    const advance = () => {
+      if (!active) return;
+      round++;
+      if (round >= targetCount) { finish(false); return; }
+      status.textContent = `接到 ${hits} / ${targetCount}｜剩餘 ${targetCount - round} 捆`;
+      moveTarget();
+    };
+    target.addEventListener('click', () => {
+      if (!active) return;
+      hits++; feedback('work');
+      status.textContent = `接到 ${hits} / ${targetCount}｜剩餘 ${Math.max(0, targetCount - round)} 捆`;
+      if (hits >= targetCount) finish(false); else advance();
+    });
+    moveTarget();
+    timer = setInterval(advance, intervalMs);
+  });
+}
+function playMemoryGame() {
+  return new Promise(resolve => {
+    const mode = miniGameMode();
+    const symbols = mode === 'hard' ? ['📘', '🧠', '🦉', '🔑', '🧪'] : ['📘', '🧠', '🦉', '🔑'];
+    const pairTotal = symbols.length;
+    const deck = symbols.concat(symbols);
+    for (let i = deck.length - 1; i > 0; i--) { const j = Math.floor(randomFor(state) * (i + 1)); [deck[i], deck[j]] = [deck[j], deck[i]]; }
+    const hasBookmark = (state.inventory && state.inventory.golden_bookmark > 0);
+    if (hasBookmark) state.inventory.golden_bookmark--;
+    let open = [], matched = hasBookmark ? 1 : 0, locked = false, active = true, timeout;
+    let status;
+    const finish = (skipped = false) => {
+      if (!active) return;
+      active = false; clearTimeout(timeout); closeModal();
+      resolve(skipped ? miniGameOutcome('library', 0.14, '略過小遊戲') : miniGameOutcome('library', matched / pairTotal, `配對 ${matched} / ${pairTotal} 組（${miniGameModeLabel(mode)}）`));
+    };
+    const m = showModal({
+      wide: true, title: '📚 翻牌配對',
+      html: `<div class="minigame-intro"><div class="big">🧠</div><p>${miniGameModeLabel(mode)}：把相同的書本圖案配成一對。配對越多，今天學到的智慧越多。${hasBookmark ? '<br>🔖 黃金書籤發動：自動完成 1 組配對！' : ''}</p></div><div class="minigame-status"><span id="memoryStatus">配對 ${matched} / ${pairTotal} 組</span><span>翻開兩張牌</span></div><div class="memory-grid">${deck.map((_, i) => `<button type="button" class="memory-card" data-index="${i}" aria-label="第 ${i + 1} 張牌">?</button>`).join('')}</div>`,
+      buttons: [{ text: '略過，拿基本學習量', cls: 'center', onClick: () => finish(true) }],
+    });
+    status = m.body.querySelector('#memoryStatus');
+    const cards = [...m.body.querySelectorAll('.memory-card')];
+    const refresh = () => { status.textContent = `配對 ${matched} / ${pairTotal} 組`; };
+    if (hasBookmark) {
+      const first = cards[0], second = cards.find((card, i) => i > 0 && deck[i] === deck[0]);
+      [first, second].forEach(card => { card.classList.add('matched'); card.textContent = deck[0]; });
+    }
+    cards.forEach(card => card.addEventListener('click', () => {
+      if (!active || locked || card.classList.contains('open') || card.classList.contains('matched')) return;
+      const index = Number(card.dataset.index);
+      card.classList.add('open'); card.textContent = deck[index]; open.push({ card, index });
+      if (open.length < 2) return;
+      locked = true;
+      const [first, second] = open;
+      if (deck[first.index] === deck[second.index]) {
+        first.card.classList.add('matched'); second.card.classList.add('matched');
+        matched++; open = []; locked = false; refresh(); feedback('good');
+        if (matched === pairTotal) finish(false);
+      } else {
+        setTimeout(() => { if (!active) return; first.card.classList.remove('open'); second.card.classList.remove('open'); first.card.textContent = '?'; second.card.textContent = '?'; open = []; locked = false; }, 480);
+      }
+    }));
+    timeout = setTimeout(() => finish(false), mode === 'hard' ? 15000 : 18000);
+  });
+}
+function playActionMiniGame(id) {
+  if (id === 'work') return playHayGame();
+  if (id === 'library') return playMemoryGame();
+  return Promise.resolve(null);
+}
+function awardMiniGameReward(result) {
+  if (!result || result.score < 1) return null;
+  const item = MINIGAME_ITEMS.find(x => x.source === result.id);
+  if (!item) return null;
+  state.inventory[item.id] = Math.min(3, (state.inventory[item.id] || 0) + 1);
+  return item;
+}
+
 // ---------- 每日流程 ----------
 async function onAction(id) {
   if (busyFlag || state.ended || state.pendingEvent) return;
@@ -1490,7 +1618,12 @@ async function onAction(id) {
   const dayDone = state.day;
   const wasSick = state.sickDays > 0;
   const before = { int: state.int, str: state.str, cha: state.cha };
-  const { real, weak, lowMood } = runAction(state, a);
+  let miniResult = null;
+  if (MINIGAME_IDS.has(id)) {
+    try { miniResult = await playActionMiniGame(id); }
+    catch (e) { setBusy(false); toast('小遊戲暫時無法開始，請再試一次'); return; }
+  }
+  const { real, weak, lowMood } = runAction(state, a, miniResult ? miniResult.multiplier : 1);
   adjustRelationships(state, ACTION_RELATIONS[id]);
   if (wasSick) state.sickDays = Math.max(0, state.sickDays - 1);
   state.noSleepStreak = id === 'sleep' ? 0 : (state.noSleepStreak || 0) + 1;
@@ -1502,6 +1635,11 @@ async function onAction(id) {
   if (state.weather === 'rainy' && id !== 'gym') addLog('🌧️ 雨聲滴答作響，泥巴健身房今天休館。', 'ev');
 
   const flavor = pick(FLAVOR[a.id], state);
+  if (miniResult) {
+    addLog(`🎮 ${miniResult.label}`, miniResult.multiplier >= 1 ? 'ev' : 'bad');
+    const reward = awardMiniGameReward(miniResult);
+    if (reward) addLog(`🎁 完美成績獎勵：${reward.emoji} ${reward.name}（最多可疊 3 個）`, 'ev');
+  }
   addLog(`${a.emoji} ${flavor}${weak && !lowMood ? '（身體虛弱，成效打七折）' : ''}${lowMood ? '（心情低落，成長打折）' : ''}`);
   if (state.sameActionStreak >= 2) addLog(`😮‍💨 連續做同一件事第 ${state.sameActionStreak} 天，有點膩了，心情下降。`, 'ev');
   else addLog('🌈 換個行程試試，豬豬覺得新鮮又開心！', 'ev');
