@@ -47,11 +47,17 @@ const click = el => el.dispatchEvent(new el.ownerDocument.defaultView.MouseEvent
   const startBtn = [...doc.querySelectorAll('.mbtn')].find(b => b.textContent.includes('就這隻'));
   click(startBtn);
 
+  // 夢想專精是獨立於個性的第二個開局選擇
+  await waitFor(() => doc.querySelector('[data-dream="scholar"]'), '夢想專精選擇卡片');
+  click(doc.querySelector('[data-dream="scholar"]'));
+  click([...doc.querySelectorAll('.mbtn')].find(b => b.textContent.includes('選擇這個夢想')));
+
   const s = await waitFor(() => window.eval('state'), '建立新局');
   assert.strictEqual(s.personality, 'scholar');
   assert.strictEqual(s.int, 12, '學者豬開局智慧 +2');
   assert.strictEqual(s.inventory.reading_glasses, 1, '學者豬開局送讀書眼鏡');
   assert.strictEqual(s.mode, 'normal');
+  assert.strictEqual(s.dreamId, 'scholar', '新局應記錄選定的夢想專精');
 
   // 3. 徽章與開場說明
   assert.ok(doc.getElementById('persBadge').textContent.includes('學者豬'), '狀態列徽章應顯示個性');

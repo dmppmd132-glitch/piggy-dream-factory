@@ -1,5 +1,5 @@
 /* 豬豬夢工場 Service Worker：讓遊戲可離線開啟、可安裝到主畫面 */
-const CACHE = 'piggy-dream-factory-v8';
+const CACHE = 'piggy-dream-factory-v9';
 const ASSETS = [
   './',
   './index.html',
