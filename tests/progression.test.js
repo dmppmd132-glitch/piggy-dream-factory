@@ -113,6 +113,56 @@ function waitFor(fn, label, timeout = 8000) {
   assert.strictEqual(specialtyEvents.missed, null, '未命中機率時不應強制抽到專精事件');
   assert.strictEqual(specialtyEvents.integrated.title, '月光舞台的臨時救場', 'getEvent 應接入專精事件抽選');
 
+  // 宿敵盃固定在第 7／14／21／28 天舉行；玩家依當前能力挑賽制。
+  const competitionRules = window.eval(`(() => {
+    const run = newState({ personality: 'balanced', dreamId: 'knight' });
+    run.day = 7; run.nextEventDay = 30;
+    const scheduled = checkEventTrigger(run);
+    const event = getRanchCompetitionEvent(run);
+    const daily = newState({ mode: 'daily', challengeDate: '2026-11-16', seed: 42 });
+    daily.day = 14; daily.nextEventDay = 30;
+    const dailyTrigger = checkEventTrigger(daily);
+    return { scheduled, title: event.title, source: event.source, choices: event.choices.map(c => c.discipline), daily: daily.ranchCompetition, dailyTrigger };
+  })()`);
+  assert.strictEqual(competitionRules.scheduled.competition, true);
+  assert.strictEqual(competitionRules.title, '牧場新秀賽');
+  assert.strictEqual(competitionRules.source, 'competition');
+  assert.deepStrictEqual(Array.from(competitionRules.choices), ['int', 'str', 'cha']);
+  assert.strictEqual(competitionRules.daily, null, '每日挑戰不建立競賽資料');
+  assert.strictEqual(competitionRules.dailyTrigger, null, '每日挑戰不會被週賽排程打斷');
+
+  const tournament = window.eval(`(() => {
+    const original = Math.random;
+    try {
+      Math.random = () => 0;
+      const run = newState({ personality: 'balanced' });
+      run.int = run.str = run.cha = 100;
+      const first = resolveRanchCompetition(run, getRanchCompetitionEvent(run), { discipline: 'str' });
+      const second = resolveRanchCompetition(run, getRanchCompetitionEvent(run), { discipline: 'int' });
+      const third = resolveRanchCompetition(run, getRanchCompetitionEvent(run), { discipline: 'cha' });
+      const fourth = resolveRanchCompetition(run, getRanchCompetitionEvent(run), { discipline: 'str' });
+      const late = getRanchCompetitionEvent(run);
+      return { first, second, third, fourth, cup: run.ranchCompetition, late };
+    } finally { Math.random = original; }
+  })()`);
+  assert.strictEqual(tournament.first.outcome, 'win');
+  assert.strictEqual(tournament.second.outcome, 'win');
+  assert.ok(tournament.second.result.includes('銀蹄獎盃'));
+  assert.strictEqual(tournament.fourth.outcome, 'win');
+  assert.ok(tournament.fourth.result.includes('牧場總冠軍'));
+  assert.deepStrictEqual(JSON.parse(JSON.stringify(tournament.cup)), { round: 4, nextDay: null, wins: 4, ties: 0, losses: 0, missed: 0, respect: 52, awards: ['silver', 'champion'] });
+  assert.strictEqual(tournament.late, null, '四場賽事完畢後不應重複觸發');
+
+  window.eval(`state = newState({ personality: 'balanced' }); state.day = 7; state.str = 100; Math.random = () => 0; renderAll(); window.__cupPromise = presentEvent(getRanchCompetitionEvent(state));`);
+  await waitFor(() => doc.querySelector('#modalOverlay .mbtn'), '宿敵競賽選項');
+  click([...doc.querySelectorAll('#modalOverlay .mbtn')].find(b => b.textContent.includes('衝過力量障礙')));
+  await waitFor(() => doc.querySelector('#modalOverlay .mbtn')?.textContent.includes('繼續冒險'), '競賽賽果');
+  assert.strictEqual(window.eval('state.ranchCompetition.wins'), 1, '互動選項應登記勝場');
+  assert.strictEqual(window.eval('state.ranchCompetition.round'), 1, '完成比賽後應排定下一場');
+  click(doc.querySelector('#modalOverlay .mbtn'));
+  await window.eval('window.__cupPromise');
+  window.Math.random = Math.random;
+
   // 好感門檻未達時不觸發任務，達標後在一般事件日優先登場；每日挑戰停用。
   const availability = window.eval(`(() => {
     state = newState({ personality: 'balanced', dreamId: 'scholar' });
@@ -144,14 +194,15 @@ function waitFor(fn, label, timeout = 8000) {
   // 舊版 v1 存檔缺少新欄位時，可載入並補上預設任務狀態。
   const migration = window.eval(`(() => {
     const old = newState({ personality: 'balanced' });
-    delete old.dreamId; delete old.dreamMilestones; delete old.npcQuestProgress;
+    delete old.dreamId; delete old.dreamMilestones; delete old.npcQuestProgress; delete old.ranchCompetition;
     localStorage.setItem(SAVE_KEY, JSON.stringify(old));
     const loaded = loadState();
-    return { dreamId: loaded.dreamId, dreamMilestones: loaded.dreamMilestones, quests: loaded.npcQuestProgress };
+    return { dreamId: loaded.dreamId, dreamMilestones: loaded.dreamMilestones, quests: loaded.npcQuestProgress, cup: loaded.ranchCompetition };
   })()`);
   assert.strictEqual(migration.dreamId, null);
   assert.strictEqual(migration.dreamMilestones, 0);
   assert.deepStrictEqual(JSON.parse(JSON.stringify(migration.quests)), { teacher: 0, truffle: 0 });
+  assert.strictEqual(migration.cup.round, 0, '舊存檔應補上競賽狀態');
   assert.deepStrictEqual(errors, [], `頁面不應有 JavaScript 錯誤：${errors.join('; ')}`);
   console.log('✅ 夢想專精倍率、里程碑、NPC 好感任務與舊存檔遷移測試通過');
   dom.window.close();
