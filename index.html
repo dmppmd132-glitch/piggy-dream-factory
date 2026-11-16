@@ -69,6 +69,7 @@ button{font-family:inherit}
 #pigSvg{width:100%;height:auto;display:block;border:3px solid var(--wood-dark);border-radius:10px;background:#bfe9ff}
 .badges{position:absolute;right:8px;top:8px;display:flex;flex-direction:column;gap:5px;align-items:flex-end;z-index:2}
 .badge{background:#fff8dc;border:3px solid var(--wood-dark);border-radius:8px;padding:1px 9px;font-weight:800;font-size:.95rem;box-shadow:0 3px 0 var(--wood-dark)}
+.badge.season{background:#ffe6a8}.badge.season.spring{background:#ffd2dc}.badge.season.autumn{background:#ffe0a1}.badge.season.christmas{background:#d9f2df}
 .bubble{
   position:absolute;left:10px;top:10px;max-width:56%;z-index:2;
   background:#fff;border:3px solid var(--wood-dark);border-radius:12px;padding:5px 10px;font-size:.85rem;font-weight:700;
@@ -308,6 +309,7 @@ body.busy .act{pointer-events:none;opacity:.6}
       <div class="stage-view">
         <div class="badges">
           <div class="badge" id="modeBadge">🌱 一般養成</div>
+          <div class="badge season" id="seasonBadge" hidden></div>
           <div class="badge pers" id="persBadge" role="button" tabindex="0" title="點我看豬豬個性">🐷 個性</div>
           <div class="badge">📅 第 <span id="dayNum">1</span> / 30 天</div>
           <div class="badge" id="weatherBadge" aria-live="polite"><span id="weatherNum">☀️ 晴朗</span></div>
@@ -434,6 +436,21 @@ body.busy .act{pointer-events:none;opacity:.6}
                   <rect x="116" y="82" width="88" height="10" rx="3" fill="#ffc22e" stroke="#c9941a" stroke-width="3"/>
                   <circle cx="124" cy="44" r="4.6" fill="#ff5a7a"/><circle cx="160" cy="36" r="5.2" fill="#5ac8fa"/><circle cx="196" cy="44" r="4.6" fill="#7ee081"/>
                 </g>
+                <g id="seasonRedEnvelope" style="display:none">
+                  <rect x="214" y="198" width="31" height="39" rx="4" fill="#e33b45" stroke="#a52330" stroke-width="2.5"/>
+                  <path d="M216 201 L229.5 215 L243 201 M216 234 L226 223 M243 234 L233 223" fill="none" stroke="#ffd34e" stroke-width="2"/>
+                  <text x="229.5" y="220" text-anchor="middle" font-size="11" font-weight="900" fill="#ffd34e">福</text>
+                </g>
+                <g id="seasonMooncake" style="display:none">
+                  <circle cx="230" cy="220" r="19" fill="#d99343" stroke="#8f5424" stroke-width="3"/>
+                  <circle cx="230" cy="220" r="12" fill="none" stroke="#f5c66b" stroke-width="2"/>
+                  <path d="M222 220 Q230 212 238 220 Q230 228 222 220Z" fill="none" stroke="#f5c66b" stroke-width="1.6"/>
+                </g>
+                <g id="seasonSantaHat" style="display:none">
+                  <path d="M116 91 Q132 35 183 28 Q175 55 194 78 Q155 70 116 91Z" fill="#e9424f" stroke="#9e2732" stroke-width="3"/>
+                  <path d="M112 87 Q155 70 198 82 L196 96 Q154 83 114 101Z" fill="#fff3e5" stroke="#d8bfa8" stroke-width="2.5"/>
+                  <circle cx="183" cy="28" r="9" fill="#fff3e5" stroke="#d8bfa8" stroke-width="2.5"/>
+                </g>
 
                 <!-- ===== 表情特效 ===== -->
                 <g id="hearts" style="display:none">
@@ -516,13 +533,14 @@ const HAPTIC_KEY = 'pdf_haptics_enabled';
 const LB_URL = ((window.PIG_CONFIG && window.PIG_CONFIG.leaderboardUrl) || '').replace(/\/+$/, '');
 const TRANSFER_FORMAT = 'piggy-dream-factory-save';
 const TRANSFER_VERSION = 1;
+const LEGACY_KEY = 'pdf_legacy_v1';
 
 // 各數值的上下限
 const { OMNI_MIN, ENDINGS, pickEnding, calcScore, cleanName, NAME_MAX } = PigCore;
 const PERSONALITY_KEY = 'pdf_personalities_v1';   // 已通關過的個性（收集用）
 const PERSONALITIES = PigPersonalities.LIST;
 const DEFAULT_PERSONALITY = PigPersonalities.DEFAULT_ID;
-const TRANSFER_KEYS = [SAVE_KEY, DAILY_SAVE_KEY, BOOK_KEY, ACHIEVEMENT_KEY, PERSONALITY_KEY, EVENT_HISTORY_KEY];
+const TRANSFER_KEYS = [SAVE_KEY, DAILY_SAVE_KEY, BOOK_KEY, ACHIEVEMENT_KEY, PERSONALITY_KEY, EVENT_HISTORY_KEY, LEGACY_KEY];
 // 每日挑戰固定使用 NEUTRAL：所有倍率為 1，維持與舊版完全相同的起始條件
 const getPersonality = s => (s && s.mode === 'daily' ? PigPersonalities.NEUTRAL : PigPersonalities.byId(s && s.personality));
 const KEYS = ['stamina', 'int', 'str', 'cha', 'weight', 'gold', 'mood'];
@@ -574,6 +592,13 @@ const ACTION_RELATIONS = { library: { teacher: 3 }, charm: { teacher: 1 }, work:
 const MINIGAME_IDS = new Set(['work', 'library']);
 const MINIGAME_NAMES = { work: '點擊接乾草', library: '翻牌配對' };
 const MINIGAME_HARD_DAY = 8;
+const LEGACY_TRAITS = [
+  { id: 'iron_will', emoji: '🛡️', name: '鐵蹄意志', desc: '祖先留下堅韌的意志，下一代開局力量 +3。', bonus: { str: 3 } },
+  { id: 'bookish_blood', emoji: '📚', name: '書香血脈', desc: '家族記憶流淌在腦中，下一代開局智慧 +3。', bonus: { int: 3 } },
+  { id: 'star_charm', emoji: '🌟', name: '明星氣場', desc: '祖傳的魅力讓大家忍不住多看一眼，下一代魅力 +3。', bonus: { cha: 3 } },
+  { id: 'tough_hide', emoji: '🧱', name: '厚實皮毛', desc: '代代相傳的健康體魄，下一代開局體力 +10。', bonus: { stamina: 10 } },
+  { id: 'golden_hoof', emoji: '🪙', name: '黃金豬蹄', desc: '祖先留下做生意的直覺，下一代開局豬豬幣 +50。', bonus: { gold: 50 } },
+];
 
 const FLAVOR = {
   library: ['豬豬抱著厚厚的書啃了一整天，腦袋鼓鼓的。', '在圖書館發現一本《泥巴與數學》，看得入迷。', '一邊翻書一邊流口水，居然還記住了！'],
@@ -629,9 +654,10 @@ function newState(options = {}) {
   const personality = PigPersonalities.has(options.personality)
     ? options.personality
     : (mode === 'daily' ? DEFAULT_PERSONALITY : null);
+  const legacyTrait = mode === 'daily' ? null : (LEGACY_TRAITS.find(t => t.id === options.legacyTrait) || null);
   const s = {
     v: 1, mode, challengeDate, seed, rngState: seed, dailyEventOrder: [], dailyEventIndex: 0,
-    personality,
+    personality, legacyTrait: legacyTrait && legacyTrait.id, seasonalId: getSeasonalEvent(utcToday()) ? getSeasonalEvent(utcToday()).id : null,
     day: 1, stamina: 100, int: 10 + bonus.int, str: 10 + bonus.str, cha: 10 + bonus.cha, weight: 30, gold: 100, mood: 70,
     lastActionId: null, sameActionStreak: 0, relationships: { teacher: 0, truffle: 0 }, inventory: {},
     sickDays: 0, nextEventDay: mode === 'daily' ? 3 : 0, hit: {}, eventTitles: [], log: [],
@@ -645,6 +671,9 @@ function newState(options = {}) {
       if (k in LIMITS) s[k] = clamp(s[k] + v, LIMITS[k][0], LIMITS[k][1]);
     }
     for (const [id, n] of Object.entries(p.startItems || {})) s.inventory[id] = (s.inventory[id] || 0) + n;
+  }
+  if (legacyTrait) {
+    for (const [k, v] of Object.entries(legacyTrait.bonus || {})) s[k] = clamp(s[k] + v, LIMITS[k][0], LIMITS[k][1]);
   }
   if (mode === 'daily') s.dailyEventOrder = seededShuffle(LOCAL_EVENTS.map(e => e.title), seed);
   s.weather = rollWeather(s);
@@ -940,6 +969,42 @@ function parseJsonLoose(text) {
   return JSON.parse(t.slice(a, b + 1));
 }
 
+const SEASON_CONFIG = {
+  spring_festival: { id: 'spring_festival', name: '春節', emoji: '🧧', start: '01-20', end: '02-28', className: 'spring' },
+  mid_autumn: { id: 'mid_autumn', name: '中秋節', emoji: '🥮', start: '09-01', end: '09-30', className: 'autumn' },
+  christmas: { id: 'christmas', name: '聖誕節', emoji: '🎄', start: '12-01', end: '12-31', className: 'christmas' },
+};
+const SEASONAL_EVENTS = [
+  { seasonId: 'spring_festival', tag: 'gold', title: '春節紅包大作戰', emoji: '🧧', story: '牧場掛滿了春聯，母牛老師發給每隻小豬一個紅包，說今年要靠自己的選擇賺到最大紅包。', choices: [
+    { text: '用智慧解春聯謎題', result: '你解出藏在春聯裡的謎語，拿到一個厚厚的紅包。', effects: { int: 4, gold: 35, mood: 8 } },
+    { text: '幫忙發紅包給鄰居', result: '大家收到祝福後笑得好開心，也回送你一個小紅包。', effects: { cha: 5, gold: 18, mood: 10 } },
+  ] },
+  { seasonId: 'spring_festival', tag: 'cha', title: '舞獅來拜年', emoji: '🦁', story: '兩隻小獅子來到牧場拜年，卻發現舞獅隊少了一個帶頭搖鈴的隊員。', choices: [
+    { text: '戴上頭套帶隊舞獅', result: '你踩著鼓點跳得虎虎生風，整個牧場都收到你的新年祝福。', effects: { cha: 6, stamina: -12, gold: 20 } },
+    { text: '替舞獅隊設計路線', result: '你畫出最熱鬧的拜年路線，隊伍順利走遍整個牧場。', effects: { int: 4, cha: 2, mood: 6 } },
+  ] },
+  { seasonId: 'mid_autumn', tag: 'weight', title: '中秋月餅評鑑會', emoji: '🥮', story: '月光下的牧場舉辦月餅評鑑會，桌上有松露、蜂蜜和鹹蛋黃三種口味。', choices: [
+    { text: '每種口味都吃一輪', result: '你吃出最細緻的層次，評審頒給你一盒冠軍月餅。', effects: { stamina: 24, weight: 3, mood: 10 } },
+    { text: '分析配方寫評語', result: '你指出每種月餅的祕密，主辦人送你一筆評審費。', effects: { int: 5, gold: 28 } },
+  ] },
+  { seasonId: 'mid_autumn', tag: 'cha', title: '月下提燈大遊行', emoji: '🏮', story: '小動物們準備在月光下提燈遊行，卻缺一隻能讓隊伍不迷路的領隊豬。', choices: [
+    { text: '舉起月兔燈帶隊', result: '你的燈籠照亮整條小路，大家唱著歌走到山坡看月亮。', effects: { cha: 5, stamina: -8, mood: 10 } },
+    { text: '替大家安排觀月座位', result: '你把望月的最佳位置分配得恰到好處，還獲得謝禮。', effects: { int: 3, gold: 20, mood: 6 } },
+  ] },
+  { seasonId: 'christmas', tag: 'gold', title: '聖誕紅襪的祕密', emoji: '🎁', story: '聖誕樹下掛滿紅襪，老爺爺說只有做出今年最棒選擇的小豬才能打開它。', choices: [
+    { text: '幫大家準備驚喜禮物', result: '你忙了一整晚，紅襪裡竟然也出現一份給你的禮物。', effects: { cha: 5, gold: 35, stamina: -8 } },
+    { text: '研究禮物上的古老謎題', result: '你破解謎題，發現紅襪裡藏著一枚閃亮的幸運金幣。', effects: { int: 5, gold: 28 } },
+  ] },
+  { seasonId: 'christmas', tag: 'str', title: '馴鹿車緊急維修', emoji: '🦌', story: '聖誕夜前夕，馴鹿車的輪子卡住了，禮物還等著送遍整個牧場。', choices: [
+    { text: '用力把輪子推回軌道', result: '你使出全身力氣，馴鹿車終於重新出發。', effects: { str: 5, stamina: -14, gold: 24 } },
+    { text: '畫出新的滑行路線', result: '你避開泥濘路段，馴鹿車比原本更快抵達終點。', effects: { int: 4, cha: 2, mood: 8 } },
+  ] },
+];
+function getSeasonalEvent(date = utcToday()) {
+  const md = typeof date === 'string' ? date.slice(5, 10) : '';
+  return Object.values(SEASON_CONFIG).find(s => md >= s.start && md <= s.end) || null;
+}
+
 // 在地備用事件：優先挑符合觸發原因標籤、且最近沒出現過的
 function pickLocalEvent(s, tag) {
   if (s.mode === 'daily' && Array.isArray(s.dailyEventOrder) && s.dailyEventOrder.length) {
@@ -951,6 +1016,11 @@ function pickLocalEvent(s, tag) {
   const fresh = LOCAL_EVENTS.filter(e => !s.eventTitles.includes(e.title) && !seenRecently.has(e.title));
   const thisRunFresh = LOCAL_EVENTS.filter(e => !s.eventTitles.includes(e.title));
   const pool = fresh.length ? fresh : (thisRunFresh.length ? thisRunFresh : LOCAL_EVENTS);
+  const season = getSeasonalEvent(utcToday());
+  if (s.mode !== 'daily' && season) {
+    const seasonalFresh = SEASONAL_EVENTS.filter(e => e.seasonId === season.id && !s.eventTitles.includes(e.title));
+    if (seasonalFresh.length && (randomFor(s) < 0.72 || !thisRunFresh.length)) return JSON.parse(JSON.stringify(pick(seasonalFresh, s)));
+  }
   const tagged = tag ? pool.filter(e => e.tag === tag) : [];
   // 個性偏好：沒有指定標籤時，有 55% 機率優先抽到符合個性主題的事件
   const affinity = getPersonality(s).eventAffinity || [];
@@ -978,7 +1048,8 @@ function getLook(s) {
   let eyewear = null;
   if (s.cha >= 60 && s.cha >= s.int) eyewear = 'shades';
   else if (s.int >= 35) eyewear = 'glasses';
-  return { legend, sx, sy: 1 + (sx - 1) * 0.13, hat, eyewear, bow: s.cha >= 35, sword: s.str >= 35, sparkle: s.cha >= 60 };
+  const season = (getSeasonalEvent(utcToday()) || {}).id || s.seasonalId || null;
+  return { legend, sx, sy: 1 + (sx - 1) * 0.13, hat, eyewear, season, bow: s.cha >= 35, sword: s.str >= 35, sparkle: s.cha >= 60 };
 }
 function getPigTitle(s) {
   if (Math.min(s.int, s.str, s.cha) >= OMNI_MIN) return '傳說級全能豬';
@@ -1086,6 +1157,8 @@ function loadState(key = SAVE_KEY) {
     merged.personality = PigPersonalities.has(merged.personality)
       ? merged.personality
       : (merged.mode === 'daily' ? DEFAULT_PERSONALITY : null);
+    merged.legacyTrait = merged.mode === 'daily' ? null : (LEGACY_TRAITS.some(t => t.id === merged.legacyTrait) ? merged.legacyTrait : null);
+    merged.seasonalId = getSeasonalEvent(utcToday()) ? getSeasonalEvent(utcToday()).id : null;
     merged.lastActionId = typeof merged.lastActionId === 'string' ? merged.lastActionId : null;
     merged.relationships = Object.assign({ teacher: 0, truffle: 0 }, merged.relationships && typeof merged.relationships === 'object' ? merged.relationships : {});
     for (const k of Object.keys(merged.relationships)) merged.relationships[k] = clamp(Number(merged.relationships[k]) || 0, 0, 100);
@@ -1100,6 +1173,24 @@ function loadState(key = SAVE_KEY) {
     }
     return merged;
   } catch (e) { return null; }
+}
+function getLegacyMeta() {
+  try {
+    const raw = JSON.parse(localStorage.getItem(LEGACY_KEY) || 'null');
+    const traits = raw && raw.traits && typeof raw.traits === 'object' ? raw.traits : {};
+    const clean = {};
+    for (const t of LEGACY_TRAITS) clean[t.id] = Math.max(0, Math.floor(Number(traits[t.id]) || 0));
+    return { retired: Math.max(0, Math.floor(Number(raw && raw.retired) || 0)), traits: clean, lastTrait: LEGACY_TRAITS.some(t => t.id === (raw && raw.lastTrait)) ? raw.lastTrait : null };
+  } catch (e) { return { retired: 0, traits: Object.fromEntries(LEGACY_TRAITS.map(t => [t.id, 0])), lastTrait: null }; }
+}
+function saveLegacyMeta(meta) { try { localStorage.setItem(LEGACY_KEY, JSON.stringify(meta)); } catch (e) { /* 忽略 */ } }
+function recordLegacyTrait(id) {
+  const meta = getLegacyMeta();
+  meta.retired++;
+  meta.traits[id] = (meta.traits[id] || 0) + 1;
+  meta.lastTrait = id;
+  saveLegacyMeta(meta);
+  return meta;
 }
 function loadBook() { try { return JSON.parse(localStorage.getItem(BOOK_KEY)) || {}; } catch (e) { return {}; } }
 function getAchievementMeta() {
@@ -1290,6 +1381,7 @@ function renderPig() {
 
   // 配件
   show('crown', look.hat === 'crown'); show('mortar', look.hat === 'mortar'); show('helmet', look.hat === 'helmet');
+  show('seasonRedEnvelope', look.season === 'spring_festival'); show('seasonMooncake', look.season === 'mid_autumn'); show('seasonSantaHat', look.season === 'christmas');
   show('glasses', look.eyewear === 'glasses'); show('shades', look.eyewear === 'shades');
   show('bowtie', look.bow); show('sword', look.sword); show('sparkles', look.sparkle);
   show('aura', look.legend); show('cape', look.legend);
@@ -1339,6 +1431,12 @@ function renderRelationships() {
     return `<div class="relrow"><span>${key === 'teacher' ? '🐮' : '🍄'} ${name}</span><span>${value} / 100</span></div><div class="relbar"><div class="relfill" style="width:${value}%"></div></div>`;
   }).join('');
   $('modeBadge').textContent = state.mode === 'daily' ? `📅 每日挑戰 ${state.challengeDate || ''} UTC` : '🌱 一般養成';
+  const seasonBadge = $('seasonBadge'), season = getSeasonalEvent(utcToday());
+  if (seasonBadge) {
+    seasonBadge.hidden = !season;
+    seasonBadge.textContent = season ? `${season.emoji} ${season.name}` : '';
+    seasonBadge.className = `badge season ${season ? season.className : ''}`;
+  }
   const p = getPersonality(state);
   const badge = $('persBadge');
   if (badge) {
@@ -1729,6 +1827,12 @@ async function getEvent(trig) {
     ev.source = 'local';
     return ev;
   }
+  const season = getSeasonalEvent(utcToday());
+  if (season && SEASONAL_EVENTS.some(e => e.seasonId === season.id && !state.eventTitles.includes(e.title))) {
+    const ev = pickLocalEvent(state, null);
+    ev.source = 'local';
+    return ev;
+  }
   if (getKey()) {
     try {
       const prompt = `你是《豬豬夢工場》的劇情產生器，這是一款溫馨又搞笑的小豬養成遊戲。
@@ -1924,6 +2028,8 @@ async function showEnding() {
   const unlocked = Object.keys(book).length;
   const newAch = ACHIEVEMENTS.filter(a => (s.newAchievements || []).includes(a.id));
   const bonus = s.permanentBonus || getAchievementMeta().bonuses;
+  const legacyMeta = getLegacyMeta();
+  const currentLegacy = LEGACY_TRAITS.find(t => t.id === s.legacyTrait);
   const lrank = s.runId ? localRankOf(s.runId) : null;
   const up = s.uploaded;
   closeModal();
@@ -1943,6 +2049,7 @@ async function showEnding() {
   buttons.push({ text: '🏆 排行榜', cls: 'center', onClick: () => showLeaderboard(true) });
   buttons.push({ text: '🏅 成就', cls: 'center', onClick: () => showAchievements(true) });
   buttons.push({ text: '📖 結局圖鑑', cls: 'center', onClick: () => showBook(true) });
+  if (s.mode !== 'daily') buttons.push({ text: '🧬 退休並傳承', cls: 'center primary', onClick: () => retirePig() });
   buttons.push({ text: '🔄 重新開始', cls: `center ${LB_URL && !up ? '' : 'primary'}`, onClick: () => { closeModal(); restart(); } });
 
   const m = showModal({
@@ -1965,7 +2072,7 @@ async function showEnding() {
       </div>
       <p style="margin:8px 0 0"><b>🐷 豬豬暱稱</b>（排行榜顯示用）</p>
       <input class="field" id="nameInput" maxlength="${NAME_MAX}" autocomplete="off" placeholder="最多 ${NAME_MAX} 個字" value="${esc(getPlayerName())}" ${up ? 'disabled' : ''}>
-      <p class="small" style="text-align:center">${s.mode === 'daily' ? '📅 每日挑戰使用固定起始數值，不套用或解鎖永久成就加成。' : `🏅 永久加成：智慧 +${bonus.int}、力量 +${bonus.str}、魅力 +${bonus.cha}（新局套用）`}</p>
+      <p class="small" style="text-align:center">${s.mode === 'daily' ? '📅 每日挑戰使用固定起始數值，不套用或解鎖永久成就加成。' : `🏅 永久加成：智慧 +${bonus.int}、力量 +${bonus.str}、魅力 +${bonus.cha}（新局套用）${currentLegacy ? `<br>🧬 本局承接：${currentLegacy.emoji} ${currentLegacy.name}` : ''}<br>累計退休 ${legacyMeta.retired} 次`}</p>
       <p class="small" style="text-align:center">已解鎖結局 ${unlocked} / ${ENDINGS.length}${LB_URL ? '' : '｜尚未設定線上排行榜，成績只會記在這台裝置'}</p>`,
     buttons,
   });
@@ -2119,6 +2226,37 @@ function showPersonalityInfo() {
     buttons: [{ text: '關閉', cls: 'center primary', onClick: closeModal }],
   });
 }
+function pickLegacyTrait() {
+  return new Promise(resolve => {
+    const meta = getLegacyMeta();
+    let selected = LEGACY_TRAITS[0].id;
+    const card = t => `<button type="button" class="pers-card ${t.id === selected ? 'on' : ''}" data-legacy="${t.id}" aria-pressed="${t.id === selected}">
+      <span class="e">${t.emoji}</span><span class="t">${esc(t.name)}</span><span class="tag">${esc(t.desc)}</span><span class="collected">已傳承 ${meta.traits[t.id] || 0} 次</span></button>`;
+    const m = showModal({
+      wide: true, row: true, title: '🧬 選擇要傳給下一代的特質',
+      html: `<p class="small">這隻豬會光榮退休，下一局的新豬可以繼承一項能力。永久成就與結局圖鑑也會保留。</p><div class="pers-grid" id="legacyGrid">${LEGACY_TRAITS.map(card).join('')}</div><div class="pers-detail" id="legacyDetail">${esc(LEGACY_TRAITS[0].desc)}</div>`,
+      buttons: [
+        { text: '取消', cls: 'center', onClick: () => { closeModal(); resolve(null); } },
+        { text: '傳承這項特質 ▶', cls: 'center primary', onClick: () => { closeModal(); resolve(selected); } },
+      ],
+    });
+    const refresh = () => {
+      m.body.querySelectorAll('[data-legacy]').forEach(b => { const on = b.dataset.legacy === selected; b.classList.toggle('on', on); b.setAttribute('aria-pressed', String(on)); });
+      const trait = LEGACY_TRAITS.find(t => t.id === selected); m.body.querySelector('#legacyDetail').textContent = trait ? trait.desc : '';
+    };
+    m.body.querySelectorAll('[data-legacy]').forEach(b => b.addEventListener('click', () => { selected = b.dataset.legacy; refresh(); }));
+  });
+}
+async function retirePig() {
+  if (busyFlag || !state || state.mode === 'daily' || !state.ended) return;
+  const traitId = await pickLegacyTrait();
+  if (!traitId) return;
+  const personality = await pickPersonality({ current: state.personality, allowCancel: true });
+  if (!personality) return;
+  recordLegacyTrait(traitId);
+  state = newState({ personality, legacyTrait: traitId });
+  save(); setBusy(false); closeModal(); renderAll(); say('新的世代，帶著祖先的祝福出發！'); showIntro('normal');
+}
 
 function showSettings() {
   const hasKey = !!getKey();
@@ -2136,7 +2274,7 @@ function showSettings() {
       <label class="small"><input id="soundToggle" type="checkbox" ${settingEnabled(SOUND_KEY) ? 'checked' : ''}> 啟用 Web Audio 音效</label><br>
       <label class="small"><input id="hapticToggle" type="checkbox" ${settingEnabled(HAPTIC_KEY) ? 'checked' : ''}> 啟用手機震動回饋（裝置支援時）</label>
       <hr><p><b>存檔轉移</b></p>
-      <p class="small">匯出會包含一般養成、每日挑戰、結局圖鑑、永久成就、個性收集與事件紀錄。Gemini API Key、暱稱與裝置識別碼不會被匯出。</p>
+      <p class="small">匯出會包含一般養成、每日挑戰、結局圖鑑、永久成就、個性收集、事件紀錄與傳承紀錄。Gemini API Key、暱稱與裝置識別碼不會被匯出。</p>
       <div class="modal-btns row" style="margin-top:6px"><button class="mbtn center" id="exportSaveBtn" type="button">⬇️ 匯出存檔</button><button class="mbtn center" id="importSaveBtn" type="button">⬆️ 匯入存檔</button></div>
       <input id="importSaveInput" type="file" accept=".json,application/json" hidden>`,
     buttons: [
@@ -2212,6 +2350,8 @@ async function startNormal() {
 function showIntro(mode = (state && state.mode) || 'normal') {
   const daily = mode === 'daily';
   const p = getPersonality(state);
+  const legacy = LEGACY_TRAITS.find(t => t.id === state.legacyTrait);
+  const season = getSeasonalEvent(utcToday());
   showModal({
     row: true, title: daily ? '📅 每日固定挑戰' : '🐷 歡迎來到豬豬夢工場！',
     html: `<div class="big">🌾🐖🌾</div>
@@ -2219,7 +2359,8 @@ function showIntro(mode = (state && state.mode) || 'normal') {
       <p>每天選 <b>1 個行動</b>：讀書、健身、練儀態、大吃大喝、打工，或睡覺回血。體力歸零會昏倒住院，記得量力而為。</p>
       <p>途中會遇到<b>突發事件</b>，你的選擇會影響數值。第 30 天結束後，依最終數值解鎖專屬結局與報紙頭條！</p>
       ${daily ? '' : `<p class="scorebox">${p.emoji} 本局個性：${esc(p.name)}<small>${esc(p.tagline)}｜${esc(p.pros.join('、'))}</small></p>`}
-      <p class="small">🏆 一共有 ${ENDINGS.length} 種結局等你收集。內建事件共 ${LOCAL_EVENTS.length} 則；每天的天氣可能改變行程選擇與收益。</p>
+      <p class="small">🏆 一共有 ${ENDINGS.length} 種結局等你收集。內建事件共 ${LOCAL_EVENTS.length} 則${season ? `，目前還有 ${season.emoji}${season.name}限定事件` : ''}；每天的天氣可能改變行程選擇與收益。</p>
+      ${legacy && !daily ? `<p class="scorebox">🧬 世代傳承：${legacy.emoji} ${esc(legacy.name)}<small>${esc(legacy.desc)}</small></p>` : ''}
       ${daily ? `<p class="scorebox">🌍 ${state.challengeDate} UTC 固定挑戰<small>每日種子、天氣、能力成長與事件順序固定；不套用永久成就加成，個性固定為「標準豬豬」。事件固定使用內建內容，不受玩家 API Key 影響。</small></p>` : `<p class="small">🏅 永久加成：智慧 +${getAchievementMeta().bonuses.int}、力量 +${getAchievementMeta().bonuses.str}、魅力 +${getAchievementMeta().bonuses.cha}。解鎖成就後，下一局就能帶著加成出發！</p>`}`,
     buttons: [{ text: daily ? '開始今日挑戰 ▶' : '開始一般養成 ▶', cls: 'center primary', onClick: () => { closeModal(); say(daily ? '固定事件順序已鎖定，開始每日挑戰！' : '今天要做什麼呢？'); } }, { text: daily ? '🌱 切回一般養成' : '📅 改玩每日挑戰', cls: 'center', onClick: () => daily ? startNormalChallenge() : startDailyChallenge() }],
   });
