@@ -51,6 +51,13 @@ button{font-family:inherit}
 /* ===== 版面：左邊豬豬、右邊筆記本 ===== */
 .layout{display:grid;grid-template-columns:minmax(300px,430px) 1fr;gap:16px;align-items:start}
 .stage{position:sticky;top:10px}
+@media (max-width:620px){
+  .tbtn .lbl{display:none}
+  .tbtn{padding:5px 9px;font-size:1.05rem}
+  .topbar{flex-direction:column;align-items:stretch;gap:6px}
+  .topbtns{justify-content:center}
+  .topbar h1{white-space:nowrap}
+}
 @media (max-width:780px){
   .layout{grid-template-columns:1fr}
   .stage{position:static}
@@ -241,6 +248,25 @@ body.busy .act{pointer-events:none;opacity:.6}
 .twinkle{animation:twinkle 1.6s ease-in-out infinite;transform-box:fill-box;transform-origin:center}
 .twinkle.t2{animation-delay:.6s}
 @keyframes twinkle{0%,100%{transform:scale(.4);opacity:.3}50%{transform:scale(1.2);opacity:1}}
+/* 天氣畫面（只影響外觀，規則仍由 WEATHER 決定）。用 class 而不是 id，結局頁複製出的豬豬圖才不會失效 */
+.pigsvg .sky0{stop-color:#9bdcff;transition:stop-color 1s}
+.pigsvg .sky1{stop-color:#fff2c9;transition:stop-color 1s}
+.sunG{transition:opacity 1s}
+.pigsvg[data-wx=cloudy] .sky0{stop-color:#b9c9d6}
+.pigsvg[data-wx=cloudy] .sky1{stop-color:#eef0ea}
+.pigsvg[data-wx=rainy] .sky0{stop-color:#7f93a8}
+.pigsvg[data-wx=rainy] .sky1{stop-color:#c9d3d8}
+.pigsvg[data-wx=windy] .sky0{stop-color:#a8e1e6}
+.pigsvg[data-wx=windy] .sky1{stop-color:#f4f7de}
+.pigsvg[data-wx=cloudy] .sunG,.pigsvg[data-wx=rainy] .sunG{opacity:0}
+.pigsvg[data-wx=windy] .sunG{opacity:.85}
+.pigsvg[data-wx=cloudy] .cloud ellipse{fill:#dfe5ea}
+.pigsvg[data-wx=rainy] .cloud ellipse{fill:#8e9aa8}
+.pigsvg[data-wx=windy] .cloud.c1,.pigsvg[data-wx=windy] .cloud.c2{animation-duration:8s}
+.wx-drop{animation:wxFall linear infinite}
+@keyframes wxFall{from{transform:translateY(-30px)}to{transform:translateY(360px)}}
+.wx-leaf{animation:wxLeaf linear infinite}
+@keyframes wxLeaf{0%{transform:translate(-30px,0) rotate(0)}25%{transform:translate(70px,-14px) rotate(120deg)}50%{transform:translate(170px,10px) rotate(260deg)}75%{transform:translate(270px,-10px) rotate(400deg)}100%{transform:translate(380px,6px) rotate(540deg)}}
 .cloud{animation:drift 26s linear infinite alternate}
 .cloud.c2{animation-duration:34s}
 @keyframes drift{from{transform:translateX(-14px)}to{transform:translateX(26px)}}
@@ -256,15 +282,16 @@ body.busy .act{pointer-events:none;opacity:.6}
   <header class="topbar wood">
     <h1>🐷 豬豬夢工場<small>30 天豬生逆襲</small></h1>
     <div class="topbtns">
-      <button class="tbtn" id="btnInstall" hidden>📲 安裝</button>
-      <button class="tbtn" id="btnRank">🏆 排行榜</button>
-      <button class="tbtn" id="btnDaily">📅 每日挑戰</button>
-      <button class="tbtn" id="btnCasual">🌱 一般養成</button>
-      <button class="tbtn" id="btnShop">🛍️ 商店</button>
-      <button class="tbtn" id="btnBook">📖 結局圖鑑</button>
-      <button class="tbtn" id="btnAchievements">🏅 成就</button>
-      <button class="tbtn" id="btnSettings">⚙️ 設定</button>
-      <button class="tbtn" id="btnRestart">🔄 重來</button>
+      <button class="tbtn" id="btnInstall" title="安裝到主畫面" aria-label="安裝到主畫面" hidden>📲<span class="lbl"> 安裝</span></button>
+      <button class="tbtn" id="btnSound" title="音效開關" aria-label="音效開關">🔊</button>
+      <button class="tbtn" id="btnRank" title="排行榜" aria-label="排行榜">🏆<span class="lbl"> 排行榜</span></button>
+      <button class="tbtn" id="btnDaily" title="每日挑戰" aria-label="每日挑戰">📅<span class="lbl"> 每日挑戰</span></button>
+      <button class="tbtn" id="btnCasual" title="一般養成" aria-label="一般養成">🌱<span class="lbl"> 一般養成</span></button>
+      <button class="tbtn" id="btnShop" title="商店" aria-label="商店">🛍️<span class="lbl"> 商店</span></button>
+      <button class="tbtn" id="btnBook" title="結局圖鑑" aria-label="結局圖鑑">📖<span class="lbl"> 結局圖鑑</span></button>
+      <button class="tbtn" id="btnAchievements" title="成就" aria-label="成就">🏅<span class="lbl"> 成就</span></button>
+      <button class="tbtn" id="btnSettings" title="設定" aria-label="設定">⚙️<span class="lbl"> 設定</span></button>
+      <button class="tbtn" id="btnRestart" title="重新開始" aria-label="重新開始">🔄<span class="lbl"> 重來</span></button>
     </div>
   </header>
 
@@ -281,9 +308,9 @@ body.busy .act{pointer-events:none;opacity:.6}
         </div>
         <div class="bubble" id="bubble">今天要做什麼呢？</div>
 
-        <svg id="pigSvg" viewBox="-10 0 340 340" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="可愛的小粉豬">
+        <svg id="pigSvg" class="pigsvg" viewBox="-10 0 340 340" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="可愛的小粉豬">
           <defs>
-            <linearGradient id="sky" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#9bdcff"/><stop offset="1" stop-color="#fff2c9"/></linearGradient>
+            <linearGradient id="sky" x1="0" y1="0" x2="0" y2="1"><stop class="sky0" offset="0" stop-color="#9bdcff"/><stop class="sky1" offset="1" stop-color="#fff2c9"/></linearGradient>
             <radialGradient id="auraGrad" cx="50%" cy="50%" r="50%"><stop offset="0" stop-color="#fff2a8" stop-opacity=".95"/><stop offset="1" stop-color="#ffd24a" stop-opacity="0"/></radialGradient>
             <path id="heartPath" d="M0 5 C-8 -1 -8 -9 -3.6 -9 C-1.6 -9 0 -7.5 0 -6 C0 -7.5 1.6 -9 3.6 -9 C8 -9 8 -1 0 5 Z"/>
             <path id="starPath" d="M0 -9 L2.2 -2.2 L9 0 L2.2 2.2 L0 9 L-2.2 2.2 L-9 0 L-2.2 -2.2 Z"/>
@@ -291,8 +318,7 @@ body.busy .act{pointer-events:none;opacity:.6}
 
           <!-- 牧場背景 -->
           <rect x="-10" width="340" height="340" fill="url(#sky)"/>
-          <circle cx="268" cy="104" r="30" fill="#ffd95a" opacity=".28"/>
-          <circle cx="268" cy="104" r="21" fill="#ffd95a"/>
+          <g class="sunG"><circle cx="268" cy="104" r="30" fill="#ffd95a" opacity=".28"/><circle cx="268" cy="104" r="21" fill="#ffd95a"/></g>
           <g class="cloud c1"><ellipse cx="70" cy="86" rx="28" ry="11" fill="#fff"/><ellipse cx="92" cy="80" rx="19" ry="10" fill="#fff"/><ellipse cx="52" cy="82" rx="15" ry="8" fill="#fff"/></g>
           <g class="cloud c2"><ellipse cx="200" cy="64" rx="24" ry="9" fill="#fff" opacity=".9"/><ellipse cx="218" cy="59" rx="16" ry="8" fill="#fff" opacity=".9"/></g>
           <path d="M-10 244 Q80 200 170 236 T330 224 V340 H-10Z" fill="#b6e48a"/>
@@ -432,6 +458,7 @@ body.busy .act{pointer-events:none;opacity:.6}
               <circle class="skin" cx="0" cy="8" r="9"/>
             </g>
           </g>
+          <g class="wxLayer" pointer-events="none"></g>
         </svg>
       </div>
 
@@ -1039,7 +1066,43 @@ function rememberEventTitle(title) {
 function recentEventTitles() {
   try { const h = JSON.parse(localStorage.getItem(EVENT_HISTORY_KEY) || '[]'); return Array.isArray(h) ? h : []; } catch (e) { return []; }
 }
+function refreshSoundBtn() { const b = $('btnSound'); if (b) b.textContent = settingEnabled(SOUND_KEY) ? '🔊' : '🔇'; }
 function settingEnabled(key) { try { return localStorage.getItem(key) !== '0'; } catch (e) { return true; } }
+// 進階音效（Web Audio 即時合成）：單音與雜訊兩個小工具
+function sfxTone(ctx, freq, d, o = {}) {
+  const t = ctx.currentTime + (o.at || 0), osc = ctx.createOscillator(), g = ctx.createGain();
+  osc.type = o.type || 'sine';
+  osc.frequency.setValueAtTime(freq, t);
+  if (o.to) osc.frequency.exponentialRampToValueAtTime(o.to, t + d);
+  g.gain.setValueAtTime(0.0001, t);
+  g.gain.exponentialRampToValueAtTime(o.vol || 0.06, t + 0.012);
+  g.gain.exponentialRampToValueAtTime(0.0001, t + d);
+  osc.connect(g); g.connect(ctx.destination); osc.start(t); osc.stop(t + d + 0.03);
+}
+function sfxNoise(ctx, d, o = {}) {
+  const t = ctx.currentTime + (o.at || 0), len = Math.max(1, Math.floor(ctx.sampleRate * d));
+  const buf = ctx.createBuffer(1, len, ctx.sampleRate), data = buf.getChannelData(0);
+  for (let i = 0; i < len; i++) data[i] = Math.random() * 2 - 1;
+  const src = ctx.createBufferSource(), f = ctx.createBiquadFilter(), g = ctx.createGain();
+  src.buffer = buf; f.type = o.filter || 'lowpass'; f.frequency.value = o.freq || 1000;
+  g.gain.setValueAtTime(0.0001, t);
+  g.gain.exponentialRampToValueAtTime(o.vol || 0.12, t + 0.01);
+  g.gain.exponentialRampToValueAtTime(0.0001, t + d);
+  src.connect(f); f.connect(g); g.connect(ctx.destination); src.start(t); src.stop(t + d + 0.03);
+}
+const sfxArp = (ctx, notes, step, o = {}) => notes.forEach((f, i) => sfxTone(ctx, f, o.d || step * 1.6, Object.assign({}, o, { at: i * step })));
+// 每個行程各有專屬聲音；good／bad 是事件結果；milestone 是能力突破 40／70
+const RICH_SFX = {
+  library:   c => { sfxNoise(c, 0.14, { filter: 'highpass', freq: 3500, vol: 0.08 }); sfxNoise(c, 0.12, { at: 0.17, filter: 'highpass', freq: 3000, vol: 0.07 }); sfxTone(c, 660, 0.15, { at: 0.08, vol: 0.04 }); },
+  gym:       c => { [0, 0.28].forEach(at => { sfxTone(c, 130, 0.2, { at, to: 55, type: 'square', vol: 0.1 }); sfxNoise(c, 0.18, { at, freq: 250, vol: 0.2 }); }); },
+  charm:     c => sfxArp(c, [784, 988, 1175, 1568], 0.09, { type: 'triangle', vol: 0.07 }),
+  feast:     c => { [0, 0.11, 0.22].forEach(at => sfxNoise(c, 0.07, { at, freq: 900, vol: 0.2 })); sfxArp(c, [330, 392, 523], 0.12, { at: 0.35, type: 'triangle', vol: 0.06 }); },
+  work:      c => { sfxTone(c, 988, 0.07, { type: 'square', vol: 0.05 }); sfxTone(c, 1319, 0.28, { at: 0.07, type: 'square', vol: 0.05 }); },
+  sleep:     c => sfxArp(c, [392, 330, 262, 196], 0.22, { d: 0.5, vol: 0.06 }),
+  good:      c => sfxArp(c, [523, 659, 784], 0.09, { type: 'triangle', vol: 0.07 }),
+  bad:       c => sfxTone(c, 220, 0.35, { to: 140, type: 'sawtooth', vol: 0.06 }),
+  milestone: c => sfxArp(c, [523, 659, 784, 1047], 0.1, { type: 'triangle', vol: 0.08, d: 0.22 }),
+};
 function playSound(type) {
   if (!settingEnabled(SOUND_KEY)) return;
   try {
@@ -1048,6 +1111,7 @@ function playSound(type) {
     if (!playSound.context) playSound.context = new Audio();
     const ctx = playSound.context;
     if (ctx.state === 'suspended') ctx.resume().catch(() => {});
+    if (RICH_SFX[type]) { RICH_SFX[type](ctx); return; }
     const patterns = {
       action: [[520, 0.055, 0, 0.035]],
       growth: [[440, 0.09, 0, 0.045], [660, 0.12, 0.075, 0.04]],
@@ -1070,8 +1134,16 @@ function playSound(type) {
 function feedback(type) {
   playSound(type);
   if (!settingEnabled(HAPTIC_KEY) || !navigator.vibrate) return;
-  const patterns = { action: 8, growth: [15, 25, 20], event: 12, collapse: [70, 45, 100], ending: [25, 35, 45, 50, 80], achievement: [18, 25, 48] };
+  const patterns = { action: 8, growth: [15, 25, 20], event: 12, collapse: [70, 45, 100], ending: [25, 35, 45, 50, 80], achievement: [18, 25, 48], gym: [30, 40, 30], work: [15, 30, 15], good: [15, 30, 15], bad: 80, milestone: [20, 40, 20, 40, 60] };
   try { navigator.vibrate(patterns[type] || 10); } catch (e) { /* 裝置不支援時忽略 */ }
+}
+// 智慧／力量／魅力突破 40 或 70 時，給點鼓勵（音效＋提示）
+function checkMilestones(before) {
+  const hits = [];
+  for (const [k, name] of [['int', '智慧'], ['str', '力量'], ['cha', '魅力']]) {
+    for (const t of [40, 70]) if (before[k] < t && state[k] >= t) hits.push(`${name}突破 ${t}！`);
+  }
+  if (hits.length) { setTimeout(() => feedback('milestone'), 350); toast('📈 ' + hits.join('　'), 2400); }
 }
 function say(text) { $('bubble').textContent = text; }
 
@@ -1208,10 +1280,39 @@ function renderStats() {
   $('dayNum').textContent = Math.min(s.day, TOTAL_DAYS);
   $('goldNum').textContent = s.gold;
 }
+// 天氣粒子：下雨＝雨滴、微風＝飄動的葉子（純外觀）
+function buildWxLayer(key) {
+  const g = document.querySelector('#pigSvg .wxLayer'), NS = 'http://www.w3.org/2000/svg';
+  if (!g) return;
+  g.textContent = '';
+  const mk = (tag, attrs) => { const e = document.createElementNS(NS, tag); for (const k in attrs) e.setAttribute(k, attrs[k]); return e; };
+  if (key === 'rainy') {
+    for (let i = 0; i < 26; i++) {
+      const x = Math.random() * 350 - 15;
+      const d = mk('line', { x1: x.toFixed(1), y1: 0, x2: (x - 5).toFixed(1), y2: 14, stroke: '#cfe8ff', 'stroke-width': 1.4, 'stroke-linecap': 'round', opacity: '.75', class: 'wx-drop' });
+      d.style.animationDuration = (0.75 + Math.random() * 0.35).toFixed(2) + 's';
+      d.style.animationDelay = '-' + (Math.random() * 1.2).toFixed(2) + 's';
+      g.appendChild(d);
+    }
+  } else if (key === 'windy') {
+    for (let i = 0; i < 9; i++) {
+      // 外層 <g> 負責高度，內層葉子負責動畫（CSS 動畫的 transform 會蓋掉同一個元素上的 transform 屬性）
+      const row = mk('g', { transform: `translate(0 ${(40 + Math.random() * 230).toFixed(0)})` });
+      const leaf = mk('path', { d: 'M0 0 q4 -6 8 0 q-4 6 -8 0z', fill: i % 3 ? '#7fc65a' : '#e9a23b', opacity: '.9', class: 'wx-leaf' });
+      leaf.style.animationDuration = (5 + Math.random() * 4).toFixed(1) + 's';
+      leaf.style.animationDelay = '-' + (Math.random() * 8).toFixed(1) + 's';
+      row.appendChild(leaf);
+      g.appendChild(row);
+    }
+  }
+}
 function renderWeather() {
-  const w = WEATHER[state.weather] || WEATHER.cloudy;
+  const key = WEATHER[state.weather] ? state.weather : 'cloudy';
+  const w = WEATHER[key];
   $('weatherNum').textContent = `${w.emoji} ${w.name}`;
   $('weatherBadge').title = w.tip;
+  const svg = $('pigSvg');
+  if (svg.dataset.wx !== key) { svg.dataset.wx = key; buildWxLayer(key); }
 }
 function flash(real) {
   for (const k of Object.keys(real)) {
@@ -1316,13 +1417,15 @@ async function onAction(id) {
   setBusy(true);
   const dayDone = state.day;
   const wasSick = state.sickDays > 0;
+  const before = { int: state.int, str: state.str, cha: state.cha };
   const { real, weak, lowMood } = runAction(state, a);
   adjustRelationships(state, ACTION_RELATIONS[id]);
   if (wasSick) state.sickDays = Math.max(0, state.sickDays - 1);
   state.noSleepStreak = id === 'sleep' ? 0 : (state.noSleepStreak || 0) + 1;
   state.bestNoSleepStreak = Math.max(state.bestNoSleepStreak || 0, state.noSleepStreak);
-  feedback('action');
+  feedback(RICH_SFX[id] ? id : 'action');
   if (a.main && real[a.main] > 0) feedback('growth');
+  checkMilestones(before);
   if (state.weather === 'sunny' && id === 'work') addLog('☀️ 晴天加成：打工額外賺到 20G！', 'ev');
   if (state.weather === 'rainy' && id !== 'gym') addLog('🌧️ 雨聲滴答作響，泥巴健身房今天休館。', 'ev');
 
@@ -1471,6 +1574,7 @@ async function runEvent(trig) {
 }
 function presentEvent(ev) {
   return new Promise(resolve => {
+    feedback('event');
     const tag = ev.source === 'ai' ? '<span class="tag-ai">✨ Gemini</span>' : '<span class="tag-local tag-ai">內建</span>';
     const m = showModal({
       title: `${esc(ev.title)}${tag}`,
@@ -1479,13 +1583,16 @@ function presentEvent(ev) {
         text: `${i === 0 ? '🅰️' : '🅱️'} ${esc(c.text)}`,
         onClick: () => {
           if (c.requires && (Number(state.relationships && state.relationships[c.requires.npc]) || 0) < c.requires.min) { toast(`${RELATION_NAMES[c.requires.npc] || 'NPC'} 好感度需達 ${c.requires.min} 才能選這個選項`); return; }
+          const before = { int: state.int, str: state.str, cha: state.cha };
           const real = applyDelta(state, PigPersonalities.scaleEventEffects(getPersonality(state), c.effects));
           adjustRelationships(state, c.relationship);
           if (state.stamina < 1) { real.stamina = (real.stamina || 0) + (1 - state.stamina); state.stamina = 1; }
           state.eventTitles.push(ev.title);
           if (state.eventTitles.length > 40) state.eventTitles.shift();
           if (ev.source === 'local') rememberEventTitle(ev.title);
-          feedback('event');
+          const net = (real.int || 0) + (real.str || 0) + (real.cha || 0) + (real.gold || 0) / 10 + (real.stamina || 0) / 10;
+          feedback(net >= 0 ? 'good' : 'bad');
+          checkMilestones(before);
           if (ev.source === 'ai') state.aiEvents++;
           addLog(`${ev.emoji} 【${ev.title}】${c.text}`, 'ev');
           save(); renderAll(); flash(real);
@@ -1828,7 +1935,7 @@ function showSettings() {
       { text: '關閉', cls: 'center', onClick: closeModal },
     ],
   });
-  m.body.querySelector('#soundToggle').addEventListener('change', e => { try { localStorage.setItem(SOUND_KEY, e.target.checked ? '1' : '0'); } catch (err) {} toast(e.target.checked ? '音效已開啟' : '音效已關閉'); });
+  m.body.querySelector('#soundToggle').addEventListener('change', e => { try { localStorage.setItem(SOUND_KEY, e.target.checked ? '1' : '0'); } catch (err) {} refreshSoundBtn(); toast(e.target.checked ? '音效已開啟' : '音效已關閉'); });
   m.body.querySelector('#hapticToggle').addEventListener('change', e => { try { localStorage.setItem(HAPTIC_KEY, e.target.checked ? '1' : '0'); } catch (err) {} toast(e.target.checked ? '觸覺回饋已開啟' : '觸覺回饋已關閉'); });
   return m;
 }
@@ -1931,6 +2038,14 @@ async function init() {
     }
   }
   renderAll();
+  refreshSoundBtn();
+  $('btnSound').addEventListener('click', () => {
+    const on = !settingEnabled(SOUND_KEY);
+    try { localStorage.setItem(SOUND_KEY, on ? '1' : '0'); } catch (err) { /* 忽略 */ }
+    refreshSoundBtn();
+    if (on) feedback('action');
+    toast(on ? '音效已開啟' : '音效已關閉', 1400);
+  });
   $('btnRank').addEventListener('click', () => showLeaderboard(false));
   $('btnDaily').addEventListener('click', startDailyChallenge);
   $('btnCasual').addEventListener('click', startNormalChallenge);
