@@ -59,6 +59,22 @@ function waitFor(fn, label, timeout = 8000) {
   assert.strictEqual(milestone.cha, 69);
   assert.strictEqual(milestone.level, 3);
 
+  // 三種夢想都有自己的專屬尾聲；里程碑決定收尾篇章，每日挑戰不顯示。
+  const epilogues = window.eval(`(() => {
+    const scholar = getDreamEpilogue({ mode: 'normal', dreamId: 'scholar', dreamMilestones: 3 });
+    const knight = getDreamEpilogue({ mode: 'normal', dreamId: 'knight', dreamMilestones: 2 });
+    const star = getDreamEpilogue({ mode: 'normal', dreamId: 'star', dreamMilestones: 0 });
+    const daily = getDreamEpilogue({ mode: 'daily', dreamId: 'star', dreamMilestones: 3 });
+    return { scholar, knight, star, daily, markup: renderDreamEpilogue(scholar) };
+  })()`);
+  assert.strictEqual(epilogues.scholar.title, '星圖學院創辦人');
+  assert.strictEqual(epilogues.scholar.complete, true);
+  assert.ok(epilogues.knight.title.includes('護衛隊'));
+  assert.ok(epilogues.knight.story.includes('2 / 3'));
+  assert.strictEqual(epilogues.star.title, '追光的第一步');
+  assert.strictEqual(epilogues.daily, null);
+  assert.ok(epilogues.markup.includes('dream-ending--scholar'), '夢想尾聲需渲染專屬視覺樣式');
+
   // 好感門檻未達時不觸發任務，達標後在一般事件日優先登場；每日挑戰停用。
   const availability = window.eval(`(() => {
     state = newState({ personality: 'balanced', dreamId: 'scholar' });
