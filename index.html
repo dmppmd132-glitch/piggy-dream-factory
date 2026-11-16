@@ -642,6 +642,27 @@ function renderDreamEpilogue(epilogue) {
   const { dream, level, complete } = epilogue;
   return `<section class="dream-ending dream-ending--${dream.id}" aria-label="${esc(dream.name)}夢想專屬結局"><div class="dream-ending-head"><span class="dream-ending-mark" aria-hidden="true">${esc(epilogue.emoji)}</span><div><div class="dream-ending-kicker">✨ 夢想專屬結局｜${esc(dream.name)}</div><h3>${esc(epilogue.title)}</h3><p>${esc(epilogue.story)}</p></div></div><div class="dream-ending-progress"><span>里程碑</span><div class="dream-ending-meter" role="progressbar" aria-label="夢想里程碑進度" aria-valuemin="0" aria-valuemax="3" aria-valuenow="${level}"><i style="width:${level / 3 * 100}%"></i></div><strong>${level} / 3｜${complete ? '夢想圓滿' : '旅程未完'}</strong></div><blockquote>「${esc(epilogue.quote)}」</blockquote></section>`;
 }
+const DREAM_SPECIALIZATION_EVENTS = {
+  scholar: { tag: 'int', title: '燈塔圖書館的遺失星頁', emoji: '📚', story: '昨夜一陣大風吹散母牛老師整理的星圖，最關鍵的一頁落在池塘與燈塔之間。她邀你帶著小雞一起尋回線索，今晚的觀星課就等你們了。', choices: [
+    { text: '趁露水未乾，解讀星圖殘痕', result: '你把破碎線索重新排好，找回最重要的星頁；老師將你的解讀補進教材。', effects: { int: 6, stamina: -14, mood: 3 }, relationship: { teacher: 4 } },
+    { text: '帶小雞沿路訪問找線索', result: '小雞們各自記得一小段路線，拼起來竟比原圖更完整，還多出一張大家共同畫的星圖。', effects: { int: 3, cha: 4, stamina: -7, mood: 6 }, relationship: { teacher: 6 } },
+  ] },
+  knight: { tag: 'str', title: '暴雨前的斷橋求援', emoji: '🛡️', story: '溪水暴漲前，巡邏隊發現木橋斷了一截，對岸還有一車小羊回不了家。隊長把燈籠交給你：「要先搶修，還是想個安全的渡河辦法？」', choices: [
+    { text: '扛起梁木，架起臨時橋', result: '你頂住沉重梁木直到最後一隻小羊平安過橋，大家為你的勇氣掛上守望徽章。', effects: { str: 6, stamina: -18, mood: 5 } },
+    { text: '用繩索和滑輪設計渡河線', result: '你把繩索固定在兩岸，讓小羊一車一車安全通過，隊長說這是力量與智慧合作的勝利。', effects: { int: 4, str: 3, stamina: -8, gold: 8, mood: 3 } },
+  ] },
+  star: { tag: 'cha', title: '月光舞台的臨時救場', emoji: '🌟', story: '牧場月光演出的主唱突然失聲，台下的觀眾已經坐滿。燈光師把麥克風遞給你：「現在上台，或把大家都變成今晚的主角？」', choices: [
+    { text: '站上舞台，獨唱壓軸曲', result: '你一開口，全場跟著節拍揮動蹄子；演出大成功，還收到一袋打賞。', effects: { cha: 7, stamina: -16, gold: 16, mood: 5 } },
+    { text: '帶觀眾合唱，讓全場一起發光', result: '你教大家簡單的副歌，整座牧場變成合唱團；散場後，每個人都說那是最難忘的一夜。', effects: { cha: 4, int: 2, stamina: -5, gold: 6, mood: 10 } },
+  ] },
+};
+function getDreamSpecializationEvent(s) {
+  if (!s || s.mode === 'daily') return null;
+  const dream = getDream(s);
+  const event = dream && DREAM_SPECIALIZATION_EVENTS[dream.id];
+  if (!event || (s.eventTitles || []).includes(event.title) || randomFor(s) >= 0.45) return null;
+  return { ...JSON.parse(JSON.stringify(event)), source: 'local' };
+}
 const MINIGAME_IDS = new Set(['work', 'library']);
 const MINIGAME_NAMES = { work: '點擊接乾草', library: '翻牌配對' };
 const MINIGAME_HARD_DAY = 8;
@@ -1972,6 +1993,8 @@ async function getEvent(trig) {
     ev.source = 'local';
     return ev;
   }
+  const dreamEvent = getDreamSpecializationEvent(state);
+  if (dreamEvent) return dreamEvent;
   if (getKey()) {
     try {
       const prompt = `你是《豬豬夢工場》的劇情產生器，這是一款溫馨又搞笑的小豬養成遊戲。

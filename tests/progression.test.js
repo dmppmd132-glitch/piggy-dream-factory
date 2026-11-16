@@ -75,6 +75,44 @@ function waitFor(fn, label, timeout = 8000) {
   assert.strictEqual(epilogues.daily, null);
   assert.ok(epilogues.markup.includes('dream-ending--scholar'), '夢想尾聲需渲染專屬視覺樣式');
 
+  // 每種專精都有專屬互動事件；每局至多一次，僅一般事件日抽選。
+  const specialtyEvents = await window.eval(`(async () => {
+    const originalRandom = Math.random;
+    const originalSeason = getSeasonalEvent;
+    try {
+      Math.random = () => 0;
+      const collect = dreamId => {
+        const run = newState({ personality: 'balanced', dreamId });
+        const event = getDreamSpecializationEvent(run);
+        if (event) run.eventTitles.push(event.title);
+        return { event, duplicate: getDreamSpecializationEvent(run) };
+      };
+      const scholar = collect('scholar');
+      const knight = collect('knight');
+      const star = collect('star');
+      const daily = getDreamSpecializationEvent(newState({ mode: 'daily', challengeDate: '2026-11-16', seed: 42, dreamId: 'star' }));
+      const missedRun = newState({ personality: 'balanced', dreamId: 'star' });
+      Math.random = () => 0.99;
+      const missed = getDreamSpecializationEvent(missedRun);
+      Math.random = () => 0;
+      getSeasonalEvent = () => null;
+      state = newState({ personality: 'balanced', dreamId: 'star' });
+      const integrated = await getEvent({ reason: '專精事件測試' });
+      return { scholar, knight, star, daily, missed, integrated };
+    } finally { Math.random = originalRandom; getSeasonalEvent = originalSeason; }
+  })()`);
+  assert.strictEqual(specialtyEvents.scholar.event.title, '燈塔圖書館的遺失星頁');
+  assert.strictEqual(specialtyEvents.knight.event.title, '暴雨前的斷橋求援');
+  assert.strictEqual(specialtyEvents.star.event.title, '月光舞台的臨時救場');
+  for (const id of ['scholar', 'knight', 'star']) {
+    assert.strictEqual(specialtyEvents[id].event.choices.length, 2, `${id} 事件應提供兩個互動選擇`);
+    assert.strictEqual(specialtyEvents[id].event.source, 'local');
+    assert.strictEqual(specialtyEvents[id].duplicate, null, `${id} 事件每局只能登場一次`);
+  }
+  assert.strictEqual(specialtyEvents.daily, null, '每日挑戰不得抽到專精事件');
+  assert.strictEqual(specialtyEvents.missed, null, '未命中機率時不應強制抽到專精事件');
+  assert.strictEqual(specialtyEvents.integrated.title, '月光舞台的臨時救場', 'getEvent 應接入專精事件抽選');
+
   // 好感門檻未達時不觸發任務，達標後在一般事件日優先登場；每日挑戰停用。
   const availability = window.eval(`(() => {
     state = newState({ personality: 'balanced', dreamId: 'scholar' });
