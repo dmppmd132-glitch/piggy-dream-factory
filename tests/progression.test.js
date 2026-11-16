@@ -122,12 +122,22 @@ function waitFor(fn, label, timeout = 8000) {
     const daily = newState({ mode: 'daily', challengeDate: '2026-11-16', seed: 42 });
     daily.day = 14; daily.nextEventDay = 30;
     const dailyTrigger = checkEventTrigger(daily);
-    return { scheduled, title: event.title, source: event.source, choices: event.choices.map(c => c.discipline), daily: daily.ranchCompetition, dailyTrigger };
+    return { scheduled, title: event.title, source: event.source, story: event.story, choices: event.choices.map(c => c.discipline), dialogue: event.choices.map(c => c.text), profile: RIVAL_PROFILE, rounds: RANCH_COMPETITION.rounds, daily: daily.ranchCompetition, dailyTrigger };
   })()`);
   assert.strictEqual(competitionRules.scheduled.competition, true);
   assert.strictEqual(competitionRules.title, '牧場新秀賽');
   assert.strictEqual(competitionRules.source, 'competition');
   assert.deepStrictEqual(Array.from(competitionRules.choices), ['int', 'str', 'cha']);
+  assert.strictEqual(competitionRules.profile.name, '元元');
+  assert.ok(competitionRules.profile.backstory.includes('黃色緞帶'));
+  assert.ok(competitionRules.story.includes('晨露牧場') && competitionRules.story.includes('豐收節'));
+  assert.ok(competitionRules.dialogue.some(line => line.includes('把去年沒解完的謎題')));
+  assert.strictEqual(competitionRules.rounds.length, 4);
+  for (const round of competitionRules.rounds) {
+    assert.ok(round.story.includes('元元'));
+    assert.deepStrictEqual(Object.keys(round.playerLines).sort(), ['cha', 'int', 'str']);
+    assert.deepStrictEqual(Object.keys(round.replies).sort(), ['loss', 'tie', 'win']);
+  }
   assert.strictEqual(competitionRules.daily, null, '每日挑戰不建立競賽資料');
   assert.strictEqual(competitionRules.dailyTrigger, null, '每日挑戰不會被週賽排程打斷');
 
@@ -146,6 +156,8 @@ function waitFor(fn, label, timeout = 8000) {
     } finally { Math.random = original; }
   })()`);
   assert.strictEqual(tournament.first.outcome, 'win');
+  assert.ok(tournament.first.result.includes('你回應元元') && tournament.first.result.includes('這次一起衝過終點線！'));
+  assert.ok(tournament.first.result.includes('你終於把那場平手跑完了！'));
   assert.strictEqual(tournament.second.outcome, 'win');
   assert.ok(tournament.second.result.includes('銀蹄獎盃'));
   assert.strictEqual(tournament.fourth.outcome, 'win');
@@ -154,11 +166,13 @@ function waitFor(fn, label, timeout = 8000) {
   assert.strictEqual(tournament.late, null, '四場賽事完畢後不應重複觸發');
 
   window.eval(`state = newState({ personality: 'balanced' }); state.day = 7; state.str = 100; Math.random = () => 0; renderAll(); window.__cupPromise = presentEvent(getRanchCompetitionEvent(state));`);
+  assert.ok(doc.querySelector('#relationships').textContent.includes('認識宿敵 元元') && doc.querySelector('#relationships').textContent.includes('黃色緞帶'), '關係面板應提供元元背景故事與紀念物');
   await waitFor(() => doc.querySelector('#modalOverlay .mbtn'), '宿敵競賽選項');
-  click([...doc.querySelectorAll('#modalOverlay .mbtn')].find(b => b.textContent.includes('衝過力量障礙')));
+  click([...doc.querySelectorAll('#modalOverlay .mbtn')].find(b => b.textContent.includes('力量障礙賽')));
   await waitFor(() => doc.querySelector('#modalOverlay .mbtn')?.textContent.includes('繼續冒險'), '競賽賽果');
   assert.strictEqual(window.eval('state.ranchCompetition.wins'), 1, '互動選項應登記勝場');
   assert.strictEqual(window.eval('state.ranchCompetition.round'), 1, '完成比賽後應排定下一場');
+  assert.ok(doc.querySelector('#modalOverlay').textContent.includes('元元'), '競賽結果應呈現元元的專屬回話');
   click(doc.querySelector('#modalOverlay .mbtn'));
   await window.eval('window.__cupPromise');
   window.Math.random = Math.random;

@@ -663,8 +663,16 @@ function getDreamSpecializationEvent(s) {
   if (!event || (s.eventTitles || []).includes(event.title) || randomFor(s) >= 0.45) return null;
   return { ...JSON.parse(JSON.stringify(event)), source: 'local' };
 }
+const RIVAL_PROFILE = {
+  name: '元元',
+  hometown: '晨露牧場',
+  personality: '認真細心、勝負心強，卻總會替對手加油。',
+  keepsake: '童年豐收節並列第一時，和你平分的黃色緞帶。',
+  backstory: '元元在鄰近的晨露牧場長大，做事認真又愛把每次練習記進小冊子。她和你第一次相識，是在童年豐收節的三項挑戰裡：你們一路追到終點，最後同分並列第一，主辦人只剩一條黃色緞帶，兩隻小豬便把它剪成兩半各自珍藏。從那天起，元元每年都回來找你較量。她嘴上說一定要分出勝負，其實最期待的是和你一起把牧場競賽辦得更熱鬧，讓每個小豬都有值得回憶的舞台。',
+  motto: '好對手不是要把你甩在身後，而是讓你願意再跑一圈。',
+};
 const RANCH_COMPETITION = {
-  rival: '阿墨',
+  rival: RIVAL_PROFILE.name,
   rivalScores: [18, 27, 36, 45],
   schedule: [7, 14, 21, 28],
   disciplines: {
@@ -673,10 +681,18 @@ const RANCH_COMPETITION = {
     cha: { label: '魅力舞台賽', emoji: '🎤', text: '登台炒熱氣氛', stamina: -9 },
   },
   rounds: [
-    { title: '牧場新秀賽', emoji: '🏁', story: '牧場公告欄貼出第一張競賽海報。新來的豬豬「阿墨」抱著小獎牌向你挑眉：「別擔心，我會讓你輸得很有風度！」三個賽場同時開放，你要選一項拿手本領應戰。' },
-    { title: '宿敵挑戰杯', emoji: '🏆', story: '阿墨已經把你上次的成績貼在訓練室牆上。他把計分板轉過來：「這回我可練過了！」看台上的朋友替你加油，第二場挑戰正式開始。' },
-    { title: '牧場季中決賽', emoji: '🥇', story: '通往冠軍賽的名額只剩一個。阿墨遞給你一條毛巾：「不管誰贏，賽後都去吃松露吧。」聚光燈亮起，這場比賽將決定誰能晉級。' },
-    { title: '牧場冠軍總決賽', emoji: '👑', story: '終於來到牧場冠軍總決賽！阿墨站在起跑線旁，朝你伸出蹄子：「跑完這場，我們就是彼此最好的宿敵。」全牧場屏息等待最後一回合。' },
+    { title: '牧場新秀賽', emoji: '🏁', story: '元元從晨露牧場趕來，胸前別著半條褪色的黃緞帶：「還記得豐收節那場平手嗎？我一直留著它，等今天把比賽跑完。」她朝你伸出蹄子，邀你選一項本領應戰。',
+      playerLines: { int: '把去年沒解完的謎題拿來吧！', str: '這次一起衝過終點線！', cha: '讓我們為新秀做場好看的示範！' },
+      replies: { win: '你終於把那場平手跑完了！', tie: '那條黃緞帶果然沒白留。', loss: '今天你追得好近，我們下次再跑！' } },
+    { title: '宿敵挑戰杯', emoji: '🏆', story: '元元翻開隨身小冊子，裡頭仔細記著你上次的表現，封底還夾著她珍藏的半條黃緞帶：「我不是偷看答案，是認真研究我的對手！」她眨眨眼，說自己也準備了新招。',
+      playerLines: { int: '我也做了功課，謎題上見真章！', str: '訓練成果就在跑道上見真章！', cha: '讓看台上的每個人都加入吧！' },
+      replies: { win: '你連我新練的招都看出來了！', tie: '看來我們又寫下新的平手紀錄！', loss: '這一分我先收下，下一場可不一定喔！' } },
+    { title: '牧場季中決賽', emoji: '🥇', story: '通往總決賽的資格只剩一個。元元收起小冊子，難得認真地說：「我每年回來，不只是想贏你；我想和你一起辦一場讓所有牧場小豬都能參加的比賽。」她遞來毛巾，邀你迎接季中決戰。',
+      playerLines: { int: '我們一起想出人人都能玩的規則！', str: '我會全力衝刺，也會等朋友一起！', cha: '把競賽變成大家都能加入的舞台！' },
+      replies: { win: '有你一起想辦法，冠軍賽才有意義！', tie: '你也想把比賽辦給大家玩，對吧？', loss: '先拿下資格吧，總決賽我們一起加油！' } },
+    { title: '牧場冠軍總決賽', emoji: '👑', story: '全牧場聚在終點線旁，元元把兩半黃緞帶重新繫在一起，繫上金色獎牌：「這場比賽結束後，陪我把獎盃搬回兩座牧場，好嗎？」她朝你伸出蹄子，全場等待最後一回合。',
+      playerLines: { int: '最後一題，我們一起找答案！', str: '起跑線上全力以赴，終點線後擊掌！', cha: '把這場勝負獻給所有加油的朋友！' },
+      replies: { win: '把獎盃一起抬回牧場，好嗎？', tie: '我們又是並列第一，真像那年一樣！', loss: '獎盃先讓你拿著；明年我還會來挑戰！' } },
   ],
 };
 function newRanchCompetition() {
@@ -694,7 +710,7 @@ function getRanchCompetitionEvent(s) {
     competition: { round, rivalScore: RANCH_COMPETITION.rivalScores[round] },
     title: story.title, emoji: story.emoji, story: `${story.story} 比分＝所選能力＋臨場 0～8 分；低體力或低心情會影響表現。`,
     choices: disciplines.map(([stat, event]) => ({
-      text: `${event.emoji} ${event.text}（${LABEL[stat]} ${s[stat]}｜體力 ${event.stamina}）`,
+      text: `${event.emoji} ${event.label}｜「${story.playerLines[stat]}」（${LABEL[stat]} ${s[stat]}｜體力 ${event.stamina}）`,
       discipline: stat,
       result: '',
       effects: {},
@@ -713,17 +729,20 @@ function resolveRanchCompetition(s, ev, choice) {
   const margin = playerScore - rivalScore;
   const outcome = margin >= 3 ? 'win' : margin <= -3 ? 'loss' : 'tie';
   const effects = { [stat]: outcome === 'win' ? 4 : outcome === 'tie' ? 2 : 1, stamina: discipline.stamina, gold: outcome === 'win' ? 25 + ev.competition.round * 10 : outcome === 'tie' ? 14 : 6, mood: outcome === 'win' ? 7 : outcome === 'tie' ? 4 : 2 };
+  const rivalLine = RANCH_COMPETITION.rounds[ev.competition.round].replies[outcome];
+  const dialogue = `你回應元元：「${RANCH_COMPETITION.rounds[ev.competition.round].playerLines[stat]}」元元${outcome === 'win' ? '笑著說' : outcome === 'tie' ? '點頭笑道' : '拍拍你的肩說'}：「${rivalLine}」`;
   let result = '';
   if (outcome === 'win') {
     cup.wins = (cup.wins || 0) + 1; cup.respect = Math.min(100, (cup.respect || 0) + 13);
-    result = `你拿下${discipline.label}！小豬 ${playerScore} 分，阿墨 ${rivalScore} 分；阿墨笑著把這回合的彩帶別到你胸前。`;
+    result = `你拿下${discipline.label}！小豬 ${playerScore} 分，元元 ${rivalScore} 分；她把這回合的彩帶別到你胸前。`;
   } else if (outcome === 'tie') {
     cup.ties = (cup.ties || 0) + 1; cup.respect = Math.min(100, (cup.respect || 0) + 9);
-    result = `這場${discipline.label}幾乎平手！你得 ${playerScore} 分，阿墨得 ${rivalScore} 分，兩隻豬擊掌約好下次再分勝負。`;
+    result = `這場${discipline.label}幾乎平手！你得 ${playerScore} 分，元元得 ${rivalScore} 分，兩隻豬擊掌約好下次再分勝負。`;
   } else {
     cup.losses = (cup.losses || 0) + 1; cup.respect = Math.min(100, (cup.respect || 0) + 6);
-    result = `阿墨以 ${rivalScore} 比 ${playerScore} 分先抵達終點。你沒有放棄到最後一刻，阿墨仍把一枚參與徽章交給你。`;
+    result = `元元以 ${rivalScore} 比 ${playerScore} 分先抵達終點。你沒有放棄到最後一刻，她仍把一枚參與徽章交給你。`;
   }
+  result += `\n\n${dialogue}`;
   const completedRound = ev.competition.round + 1;
   if (outcome === 'win' && cup.wins >= 2 && !cup.awards.includes('silver')) {
     cup.awards.push('silver'); effects.gold += 35; effects.cha = (effects.cha || 0) + 2;
@@ -731,7 +750,7 @@ function resolveRanchCompetition(s, ev, choice) {
   }
   if (outcome === 'win' && cup.wins >= 4 && !cup.awards.includes('champion')) {
     cup.awards.push('champion'); effects.gold += 80; effects.cha = (effects.cha || 0) + 4;
-    result += ' 四戰全勝！你和阿墨並肩舉起「牧場總冠軍」金盃。';
+    result += ' 四戰全勝！你和元元並肩舉起「牧場總冠軍」金盃。';
   }
   cup.round = completedRound;
   cup.nextDay = completedRound < RANCH_COMPETITION.schedule.length ? RANCH_COMPETITION.schedule[completedRound] : null;
@@ -1689,7 +1708,8 @@ function renderRelationships() {
     const score = `${cup.wins} 勝・${cup.ties} 平・${cup.losses} 敗${cup.missed ? `・${cup.missed} 場尚未加入` : ''}`;
     const next = completed ? '本季四場賽事已結束' : `第 ${cup.round + 1} / 4 場｜預定第 ${RANCH_COMPETITION.schedule[cup.round]} 天`;
     const awards = cup.awards.includes('champion') ? '👑 牧場總冠軍' : cup.awards.includes('silver') ? '🏆 銀蹄獎盃' : '尚未獲得獎盃';
-    competitionHtml = `<div class="dream-track"><b>🏆 牧場競賽｜宿敵豬 ${RANCH_COMPETITION.rival}</b><div>${next}</div><div>目前戰績：${score}｜${RANCH_COMPETITION.rival}敬意 ${cup.respect} / 100</div><div>${awards}</div></div>`;
+    const lore = `<details class="dream-track rival-lore"><summary>🐷 認識宿敵 ${esc(RIVAL_PROFILE.name)}</summary><p>${esc(RIVAL_PROFILE.backstory)}</p><p><b>個性：</b>${esc(RIVAL_PROFILE.personality)}</p><p><b>珍藏：</b>${esc(RIVAL_PROFILE.keepsake)}</p><blockquote>「${esc(RIVAL_PROFILE.motto)}」</blockquote></details>`;
+    competitionHtml = `<div class="dream-track"><b>🏆 牧場競賽｜宿敵豬 ${RANCH_COMPETITION.rival}</b><div>${next}</div><div>目前戰績：${score}｜${RANCH_COMPETITION.rival}敬意 ${cup.respect} / 100</div><div>${awards}</div></div>${lore}`;
   }
   $('relationships').innerHTML = rows + dreamHtml + competitionHtml;
   $('modeBadge').textContent = state.mode === 'daily' ? `📅 每日挑戰 ${state.challengeDate || ''} UTC` : '🌱 一般養成';
@@ -2662,7 +2682,7 @@ function showIntro(mode = (state && state.mode) || 'normal') {
       <p>你有 <b>30 天</b>，要把這隻普通的小粉豬養成<b>獨當一面的傳奇豬豬</b>！</p>
       <p>每天選 <b>1 個行動</b>：讀書、健身、練儀態、大吃大喝、打工，或睡覺回血。體力歸零會昏倒住院，記得量力而為。</p>
       <p>途中會遇到<b>突發事件與 NPC 好感任務</b>，你的選擇會影響數值和角色關係。第 30 天結束後，依最終數值解鎖專屬結局與報紙頭條！</p>
-      ${daily ? '' : '<p class="scorebox">🏆 牧場競賽：第 7、14、21、28 天與宿敵豬阿墨較量，可選智慧解謎、力量障礙或魅力舞台。比賽依能力、體力、心情和臨場亂數判定；兩勝得銀蹄獎盃，四戰全勝成為總冠軍。</p>'}
+      ${daily ? '' : '<p class="scorebox">🏆 牧場競賽：第 7、14、21、28 天與宿敵豬元元較量，可選智慧解謎、力量障礙或魅力舞台。每場都能用不同方式回應她；兩勝得銀蹄獎盃，四戰全勝成為總冠軍。</p>'}
       ${daily ? '' : `<p class="scorebox">${p.emoji} 本局個性：${esc(p.name)}<small>${esc(p.tagline)}｜${esc(p.pros.join('、'))}</small></p>${dream ? `<p class="scorebox">${dream.emoji} 本局夢想：${esc(dream.name)}<small>${esc(dream.focusName)}專精行動成長 +12%；達 ${dream.milestones.join('／')} 點各有里程碑獎勵。</small></p>` : ''}`}
       <p class="small">🏆 一共有 ${ENDINGS.length} 種結局等你收集。一般內建事件共 ${LOCAL_EVENTS.length} 則，另有夢想專屬事件與四場牧場競賽${season ? `，目前還有 ${season.emoji}${season.name}限定事件` : ''}；每天的天氣可能改變行程選擇與收益。</p>
       ${legacy && !daily ? `<p class="scorebox">🧬 世代傳承：${legacy.emoji} ${esc(legacy.name)}<small>${esc(legacy.desc)}</small></p>` : ''}
