@@ -15,6 +15,8 @@
 - 🏅 **7 項永久成就**：解鎖後可讓後續新局的智慧、力量或魅力起始值各增加 5 點
 - 🔊 **Web Audio 音效與手機震動**：行動、能力成長、事件、昏倒、結局／成就都有不同回饋，可在設定中關閉
 - 📚 **事件連鎖劇本**：6 條可分支、有記憶的支線（小雞、松露攤、禁書、狼群、舞台、隱藏試煉），JSON 劇本與設計文件都在 `data/` 與 `docs/`
+- 💾 **存檔轉移**：設定裡可以匯出一般養成、每日挑戰、結局圖鑑、永久成就、個性收集與事件紀錄；換裝置後選擇匯入即可復原。API Key、暱稱與裝置識別碼不會進入檔案。
+- 🔄 **新版提示**：Service Worker 偵測到新版後會顯示「點此更新」，玩家確認後才切換版本，不需要重新整理兩次。
 
 ## 怎麼玩
 
@@ -189,5 +191,7 @@ npm test                         # 個性整合測試、通關煙霧測試、劇
 ```
 
 只驗證劇本時可以執行 `python3 tests/validate-events.py && node tests/validate-schema.js && node tests/chain-sim.js 1500`。修改 `data/events.json` 後，記得跑 `npm run build:events` 重新產生 `data/events.js` 與劇本全文。
+
+每次 Pull Request 與推送到 `main` 都會由 GitHub Actions 執行 `.github/workflows/test.yml`：安裝 Node.js、Python 與 npm 相依套件，啟動本機遊戲伺服器，再執行 `npm test`。瀏覽器整合測試、存檔轉移測試、劇本 Schema 驗證與事件鏈模擬都通過後，才適合合併。
 
 開新局時要先選一種**豬豬個性**，它會改變整局的節奏，不只是外觀。個性可以在「🔄 重來」時重新選擇，通關過的個性會記錄在裝置上。

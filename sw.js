@@ -1,5 +1,5 @@
 /* 豬豬夢工場 Service Worker：讓遊戲可離線開啟、可安裝到主畫面 */
-const CACHE = 'piggy-dream-factory-v7';
+const CACHE = 'piggy-dream-factory-v8';
 const ASSETS = [
   './',
   './index.html',
@@ -14,9 +14,14 @@ const ASSETS = [
   './icons/apple-touch-icon.png',
 ];
 
-// 安裝：預先快取遊戲所需檔案
+// 安裝：預先快取遊戲所需檔案。不要在這裡 skipWaiting，讓頁面可以提示玩家更新。
 self.addEventListener('install', event => {
-  event.waitUntil(caches.open(CACHE).then(c => c.addAll(ASSETS)).then(() => self.skipWaiting()));
+  event.waitUntil(caches.open(CACHE).then(c => c.addAll(ASSETS)));
+});
+
+// 收到頁面上的「立即更新」後才切換到新版。
+self.addEventListener('message', event => {
+  if (event.data && event.data.type === 'SKIP_WAITING') self.skipWaiting();
 });
 
 // 啟用：清掉舊版本快取

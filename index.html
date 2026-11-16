@@ -233,6 +233,8 @@ body.busy .act{pointer-events:none;opacity:.6}
 .sumrow span{background:#fff;border:2px solid #5e3b1b;border-radius:8px;padding:1px 8px;font-weight:800;font-size:.85rem}
 
 .toast{position:fixed;left:50%;top:14px;transform:translateX(-50%);background:#4b2f14;color:#fff3c4;padding:8px 16px;border-radius:20px;font-weight:700;z-index:80;box-shadow:0 4px 12px rgba(0,0,0,.35);max-width:90vw;text-align:center}
+.update-prompt{position:fixed;left:50%;bottom:16px;transform:translateX(-50%);display:flex;align-items:center;gap:10px;width:min(520px,calc(100vw - 24px));padding:10px 12px;background:#fff3c4;color:#4b2f14;border:3px solid #5e3b1b;border-radius:10px;box-shadow:0 5px 16px rgba(0,0,0,.32);z-index:90;font-weight:800}
+.update-prompt span{flex:1}.update-prompt button{border:2px solid #5e3b1b;border-radius:7px;padding:6px 10px;background:#f6c744;color:#4b2f14;font:inherit;cursor:pointer;white-space:nowrap}.update-prompt button:hover{filter:brightness(1.05)}
 
 /* ===== 豬豬動畫 ===== */
 .breathe{transform-box:fill-box;transform-origin:50% 100%;animation:breathe 3.2s ease-in-out infinite}
@@ -507,12 +509,15 @@ const EVENT_HISTORY_KEY = 'pdf_local_event_history_v1';
 const SOUND_KEY = 'pdf_sound_enabled';
 const HAPTIC_KEY = 'pdf_haptics_enabled';
 const LB_URL = ((window.PIG_CONFIG && window.PIG_CONFIG.leaderboardUrl) || '').replace(/\/+$/, '');
+const TRANSFER_FORMAT = 'piggy-dream-factory-save';
+const TRANSFER_VERSION = 1;
 
 // 各數值的上下限
 const { OMNI_MIN, ENDINGS, pickEnding, calcScore, cleanName, NAME_MAX } = PigCore;
 const PERSONALITY_KEY = 'pdf_personalities_v1';   // 已通關過的個性（收集用）
 const PERSONALITIES = PigPersonalities.LIST;
 const DEFAULT_PERSONALITY = PigPersonalities.DEFAULT_ID;
+const TRANSFER_KEYS = [SAVE_KEY, DAILY_SAVE_KEY, BOOK_KEY, ACHIEVEMENT_KEY, PERSONALITY_KEY, EVENT_HISTORY_KEY];
 // 每日挑戰固定使用 NEUTRAL：所有倍率為 1，維持與舊版完全相同的起始條件
 const getPersonality = s => (s && s.mode === 'daily' ? PigPersonalities.NEUTRAL : PigPersonalities.byId(s && s.personality));
 const KEYS = ['stamina', 'int', 'str', 'cha', 'weight', 'gold', 'mood'];
@@ -980,6 +985,73 @@ let aiWarned = false;
 
 // ---------- 存檔 ----------
 function save() { try { localStorage.setItem(state && state.mode === 'daily' ? DAILY_SAVE_KEY : SAVE_KEY, JSON.stringify(state)); } catch (e) { /* 忽略 */ } }
+function buildSaveTransfer() {
+  const data = {};
+  for (const key of TRANSFER_KEYS) {
+    try {
+      const raw = localStorage.getItem(key);
+      if (raw !== null) data[key] = JSON.parse(raw);
+    } catch (e) { /* 略過損壞或無法讀取的單一項目 */ }
+  }
+  return { format: TRANSFER_FORMAT, version: TRANSFER_VERSION, exportedAt: new Date().toISOString(), data };
+}
+function isTransferObject(value) { return value && typeof value === 'object' && !Array.isArray(value); }
+function validateTransferSave(value, key) {
+  if (!isTransferObject(value) || value.v !== 1 || !Number.isInteger(value.day) || value.day < 1 || value.day > TOTAL_DAYS + 1) {
+    throw new Error(`${key === DAILY_SAVE_KEY ? '每日挑戰' : '一般養成'}存檔格式不正確`);
+  }
+  const expectedMode = key === DAILY_SAVE_KEY ? 'daily' : 'normal';
+  if (value.mode !== expectedMode) throw new Error(`${expectedMode === 'daily' ? '每日挑戰' : '一般養成'}存檔模式不正確`);
+  for (const key of KEYS) if (!Number.isFinite(Number(value[key]))) throw new Error(`存檔數值 ${key} 不正確`);
+}
+function validateSaveTransfer(payload) {
+  if (!isTransferObject(payload) || payload.format !== TRANSFER_FORMAT || payload.version !== TRANSFER_VERSION || !isTransferObject(payload.data)) {
+    throw new Error('不是豬豬夢工場的有效存檔檔案');
+  }
+  const keys = Object.keys(payload.data);
+  if (!keys.length) throw new Error('存檔檔案裡沒有可匯入的資料');
+  if (keys.some(key => !TRANSFER_KEYS.includes(key))) throw new Error('存檔檔案包含未知資料，為保護目前進度拒絕匯入');
+  if (payload.data[SAVE_KEY] !== undefined) validateTransferSave(payload.data[SAVE_KEY], SAVE_KEY);
+  if (payload.data[DAILY_SAVE_KEY] !== undefined) validateTransferSave(payload.data[DAILY_SAVE_KEY], DAILY_SAVE_KEY);
+  if (payload.data[BOOK_KEY] !== undefined && !isTransferObject(payload.data[BOOK_KEY])) throw new Error('結局圖鑑資料不正確');
+  if (payload.data[ACHIEVEMENT_KEY] !== undefined) {
+    const a = payload.data[ACHIEVEMENT_KEY];
+    if (!isTransferObject(a) || !Array.isArray(a.unlocked) || !isTransferObject(a.bonuses)) throw new Error('永久成就資料不正確');
+  }
+  if (payload.data[PERSONALITY_KEY] !== undefined && !isTransferObject(payload.data[PERSONALITY_KEY])) throw new Error('個性收集資料不正確');
+  if (payload.data[EVENT_HISTORY_KEY] !== undefined && !Array.isArray(payload.data[EVENT_HISTORY_KEY])) throw new Error('事件紀錄資料不正確');
+  return true;
+}
+function applySaveTransfer(payload) {
+  validateSaveTransfer(payload);
+  try {
+    for (const [key, value] of Object.entries(payload.data)) localStorage.setItem(key, JSON.stringify(value));
+  } catch (e) { throw new Error('瀏覽器拒絕寫入存檔，請確認沒有封鎖網站儲存空間'); }
+  return Object.keys(payload.data).length;
+}
+function downloadSaveTransfer() {
+  const payload = buildSaveTransfer();
+  if (!Object.keys(payload.data).length) { toast('目前沒有可匯出的存檔'); return; }
+  const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json;charset=utf-8' });
+  const url = URL.createObjectURL(blob), link = document.createElement('a');
+  const date = new Date().toISOString().slice(0, 10);
+  link.href = url; link.download = `piggy-dream-factory-save-${date}.json`;
+  document.body.appendChild(link); link.click(); link.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+  toast('存檔已下載，請把檔案保存在安全的地方');
+}
+async function importSaveFile(file) {
+  if (!file) return;
+  if (file.size > 2 * 1024 * 1024) throw new Error('存檔檔案過大，拒絕匯入');
+  const payload = JSON.parse(await file.text());
+  validateSaveTransfer(payload);
+  const ok = await confirmBox('⬆️ 匯入存檔？', '這會覆蓋目前瀏覽器裡的遊戲進度、圖鑑與成就資料。API Key、暱稱與裝置識別碼不會被改動。', '匯入並重新載入', '取消');
+  if (!ok) return;
+  const count = applySaveTransfer(payload);
+  closeModal();
+  toast(`已匯入 ${count} 項資料，正在重新載入…`, 1800);
+  setTimeout(() => location.reload(), 500);
+}
 function loadState(key = SAVE_KEY) {
   try {
     const raw = localStorage.getItem(key);
@@ -1924,7 +1996,11 @@ function showSettings() {
       <p class="small">目前狀態：${hasKey ? '✅ 已設定 API Key' : '⚪ 尚未設定（使用內建事件）'}</p>
       <hr><p><b>回饋設定</b></p>
       <label class="small"><input id="soundToggle" type="checkbox" ${settingEnabled(SOUND_KEY) ? 'checked' : ''}> 啟用 Web Audio 音效</label><br>
-      <label class="small"><input id="hapticToggle" type="checkbox" ${settingEnabled(HAPTIC_KEY) ? 'checked' : ''}> 啟用手機震動回饋（裝置支援時）</label>`,
+      <label class="small"><input id="hapticToggle" type="checkbox" ${settingEnabled(HAPTIC_KEY) ? 'checked' : ''}> 啟用手機震動回饋（裝置支援時）</label>
+      <hr><p><b>存檔轉移</b></p>
+      <p class="small">匯出會包含一般養成、每日挑戰、結局圖鑑、永久成就、個性收集與事件紀錄。Gemini API Key、暱稱與裝置識別碼不會被匯出。</p>
+      <div class="modal-btns row" style="margin-top:6px"><button class="mbtn center" id="exportSaveBtn" type="button">⬇️ 匯出存檔</button><button class="mbtn center" id="importSaveBtn" type="button">⬆️ 匯入存檔</button></div>
+      <input id="importSaveInput" type="file" accept=".json,application/json" hidden>`,
     buttons: [
       { text: '💾 儲存', cls: 'center primary', onClick: () => {
         const v = $('keyInput').value.trim();
@@ -1937,6 +2013,14 @@ function showSettings() {
   });
   m.body.querySelector('#soundToggle').addEventListener('change', e => { try { localStorage.setItem(SOUND_KEY, e.target.checked ? '1' : '0'); } catch (err) {} refreshSoundBtn(); toast(e.target.checked ? '音效已開啟' : '音效已關閉'); });
   m.body.querySelector('#hapticToggle').addEventListener('change', e => { try { localStorage.setItem(HAPTIC_KEY, e.target.checked ? '1' : '0'); } catch (err) {} toast(e.target.checked ? '觸覺回饋已開啟' : '觸覺回饋已關閉'); });
+  m.body.querySelector('#exportSaveBtn').addEventListener('click', downloadSaveTransfer);
+  const importInput = m.body.querySelector('#importSaveInput');
+  m.body.querySelector('#importSaveBtn').addEventListener('click', () => importInput.click());
+  importInput.addEventListener('change', async () => {
+    try { await importSaveFile(importInput.files && importInput.files[0]); }
+    catch (e) { toast(`匯入失敗：${e.message || '檔案格式不正確'}`, 3600); }
+    importInput.value = '';
+  });
   return m;
 }
 async function resolveDailyChallenge() {
@@ -2078,9 +2162,44 @@ async function init() {
   if (state.day === 1 && state.log.length === 0) showIntro(state.mode);
 }
 
-if ('serviceWorker' in navigator && /^https?:$/.test(location.protocol)) {
-  window.addEventListener('load', () => navigator.serviceWorker.register('./sw.js').catch(() => { /* 離線功能失敗不影響遊玩 */ }));
+function showUpdatePrompt(registration) {
+  if (document.getElementById('updatePrompt')) return;
+  const prompt = document.createElement('div');
+  prompt.className = 'update-prompt'; prompt.id = 'updatePrompt'; prompt.setAttribute('role', 'status');
+  prompt.innerHTML = '<span>🎉 有新版本可以使用！</span><button type="button">點此更新</button>';
+  prompt.querySelector('button').addEventListener('click', () => {
+    const waiting = registration.waiting;
+    if (!waiting) { location.reload(); return; }
+    waiting.postMessage({ type: 'SKIP_WAITING' });
+  });
+  document.body.appendChild(prompt);
 }
+function setupServiceWorkerUpdates() {
+  if (!('serviceWorker' in navigator) || !/^https?:$/.test(location.protocol)) return;
+  const hadController = !!navigator.serviceWorker.controller;
+  let reloading = false;
+  navigator.serviceWorker.addEventListener('controllerchange', () => {
+    if (!hadController || reloading) return;
+    reloading = true;
+    window.location.reload();
+  });
+  window.addEventListener('load', async () => {
+    try {
+      const registration = await navigator.serviceWorker.register('./sw.js');
+      const watchInstalling = worker => {
+        if (!worker) return;
+        worker.addEventListener('statechange', () => {
+          if (worker.state === 'installed' && navigator.serviceWorker.controller) showUpdatePrompt(registration);
+        });
+      };
+      if (registration.waiting && navigator.serviceWorker.controller) showUpdatePrompt(registration);
+      registration.addEventListener('updatefound', () => watchInstalling(registration.installing));
+      registration.update().catch(() => { /* 網路暫時不可用時，沿用目前版本 */ });
+      setInterval(() => registration.update().catch(() => {}), 60 * 60 * 1000);
+    } catch (e) { /* 離線功能失敗不影響遊玩 */ }
+  });
+}
+setupServiceWorkerUpdates();
 init();
 </script>
 </body>
