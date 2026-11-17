@@ -1,0 +1,125 @@
+<!doctype html>
+<html lang="zh-Hant">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#f4efe5" />
+    <meta name="description" content="豬豬夢工場後續開發藍圖與進度追蹤看板。" />
+    <title>豬豬夢工場｜開發 Roadmap</title>
+    <link rel="stylesheet" href="./styles.css?v=20261117-2" />
+  </head>
+  <body>
+    <a class="skip-link" href="#main">跳至主要內容</a>
+    <header class="topbar">
+      <a class="brand" href="#top" aria-label="豬豬夢工場 Roadmap 首頁">
+        <span class="brand-mark" aria-hidden="true"><span></span><span></span></span>
+        <span class="brand-copy"><strong>豬豬夢工場</strong><small>開發手帳 / ROADMAP</small></span>
+      </a>
+      <nav class="topnav" aria-label="頁面導覽">
+        <a href="#overview">總覽</a>
+        <a href="#roadmap">開發階段</a>
+        <a href="#quality">品質門檻</a>
+        <a href="#releases">發版節奏</a>
+      </nav>
+      <div class="top-actions">
+        <button class="button button-quiet" id="btnImport" type="button">匯入進度</button>
+        <button class="button button-dark" id="btnExport" type="button">匯出備份</button>
+        <input id="fileImport" type="file" accept="application/json,.json" hidden />
+      </div>
+    </header>
+
+    <main id="main" class="page-shell">
+      <section id="top" class="intro" aria-labelledby="page-title">
+        <div class="intro-copy">
+          <p class="eyebrow"><span class="eyebrow-dot"></span> PROJECT NOTEBOOK <span class="eyebrow-line"></span> 2026—NEXT</p>
+          <h1 id="page-title">下一頁，<em>一起寫。</em></h1>
+          <p class="intro-text">從已經上線的豬生逆襲，走向有記憶的故事、牧場新日常與下一代傳承。這裡是《豬豬夢工場》的開發藍圖，也是每一步進度的手帳。</p>
+          <div class="intro-meta">
+            <span class="meta-pill"><span class="live-dot"></span> 公開版本 · 持續規劃中</span>
+            <span class="meta-text">規劃基線：2026.11.17</span>
+          </div>
+        </div>
+        <aside class="hero-note" aria-label="藍圖摘要">
+          <span class="note-kicker">THE NEXT CHAPTER</span>
+          <span class="note-number">06</span>
+          <span class="note-label">個開發階段</span>
+          <span class="note-rule"></span>
+          <span class="note-foot">先讓故事記得你，<br />再讓每一代留下痕跡。</span>
+          <span class="note-stamp" aria-hidden="true">PIG<br />DREAM</span>
+        </aside>
+      </section>
+
+      <section id="overview" class="overview-section" aria-labelledby="overview-title">
+        <div class="section-heading section-heading-inline">
+          <div><p class="eyebrow">AT A GLANCE</p><h2 id="overview-title">進度總覽</h2></div>
+          <p class="saved-note" id="lastSaved" aria-live="polite">進度只儲存在這個瀏覽器</p>
+        </div>
+        <div class="overview-layout">
+          <article class="progress-panel">
+            <div class="progress-panel-top">
+              <div><span class="metric-label">整體完成度</span><strong class="big-number" id="overallProgress">0%</strong></div>
+              <span class="status-chip status-not-started" id="overallStatus">尚未開始追蹤</span>
+            </div>
+            <div class="progress-track progress-track-large" role="progressbar" aria-label="整體驗收條件完成度" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" id="overallBar"><span></span></div>
+            <div class="progress-foot"><span><b id="criteriaDone">0</b> / <span id="criteriaTotal">0</span> 項階段完成條件</span><span><b id="phaseDone">0</b> / <span id="phaseTotal">6</span> 階段完成</span></div>
+            <div class="next-up"><span class="next-up-marker"></span><span><small>下一個待推進</small><strong id="nextPhase">階段 0 · 上線穩定與回饋</strong></span><span class="next-arrow" aria-hidden="true">↗</span></div>
+          </article>
+          <div class="summary-stats" aria-label="Roadmap 摘要數據">
+            <article class="stat-card stat-pink"><span class="stat-index">01 / PIPELINE</span><strong id="phaseCount">06</strong><span>個可追蹤階段</span></article>
+            <article class="stat-card stat-yellow"><span class="stat-index">02 / QUALITY</span><strong id="qualityDone">0<span class="stat-small">/ 7</span></strong><span>項品質門檻已確認</span></article>
+            <article class="stat-card stat-green"><span class="stat-index">03 / RELEASES</span><strong>05</strong><span>個建議發版節點</span></article>
+          </div>
+        </div>
+        <div class="baseline-strip">
+          <div class="baseline-label"><span class="baseline-icon" aria-hidden="true">01</span><span><small>目前版本基線</small><strong>遊戲已公開上線</strong></span></div>
+          <p>30 天養成、三種夢想專精、NPC 任務、元元四場競賽、隱藏成就、世代傳承及 PWA 離線遊玩均已具備。下一個主要內容缺口：<b>事件連鎖已有完整劇本與工具，尚待接入遊戲事件流程。</b></p>
+          <a href="#phase-p1" class="text-link">查看優先工作 <span aria-hidden="true">→</span></a>
+        </div>
+      </section>
+
+      <section class="dependency-strip" aria-labelledby="dependency-title">
+        <div><p class="eyebrow">BUILD ORDER</p><h2 id="dependency-title">推進脈絡</h2></div>
+        <div class="dependency-flow">
+          <span class="dep-node">0 穩定與回饋</span><span class="dep-arrow" aria-hidden="true">→</span><span class="dep-node dep-highlight">1 事件連鎖</span><span class="dep-arrow" aria-hidden="true">→</span><span class="dep-node">4 NPC 支線</span>
+          <span class="dep-break" aria-hidden="true">·</span><span class="dep-node">2 元元友情線</span><span class="dep-arrow" aria-hidden="true">+</span><span class="dep-node">3 牧場建設</span><span class="dep-arrow" aria-hidden="true">→</span><span class="dep-node">5 世代挑戰</span>
+        </div>
+      </section>
+
+      <section id="roadmap" class="roadmap-section" aria-labelledby="roadmap-title">
+        <div class="section-heading section-heading-inline roadmap-heading">
+          <div><p class="eyebrow">THE WORK AHEAD</p><h2 id="roadmap-title">六個階段，逐步落地</h2><p class="section-deck">勾選完成條件來更新進度；完成度會保存在此瀏覽器，也可匯出備份。</p></div>
+          <div class="filters" role="group" aria-label="篩選階段">
+            <button class="filter-button is-active" type="button" data-filter="all" aria-pressed="true">全部</button>
+            <button class="filter-button" type="button" data-filter="not-started" aria-pressed="false">未開始</button>
+            <button class="filter-button" type="button" data-filter="in-progress" aria-pressed="false">進行中</button>
+            <button class="filter-button" type="button" data-filter="done" aria-pressed="false">已完成</button>
+          </div>
+        </div>
+        <div class="roadmap-layout">
+          <aside class="phase-rail" aria-label="階段快速導覽"><p class="rail-caption">ROADMAP INDEX</p><nav id="phaseNav"></nav><div class="rail-foot">S / M / L<br />為單人開發粗估</div></aside>
+          <div id="phaseList" class="phase-list"></div>
+        </div>
+      </section>
+
+      <section id="quality" class="quality-section" aria-labelledby="quality-title">
+        <div class="quality-intro"><p class="eyebrow">SHARED QUALITY BAR</p><h2 id="quality-title">每一版都要守住的事</h2><p>這些是跨階段的共同品質門檻。逐項確認後會記錄在本機進度中；不會因為完成某個功能，就自動視為已通過。</p><div class="quality-counter"><strong id="qualityCountLarge">0 / 7</strong><span>項已確認</span></div></div>
+        <div id="qualityList" class="quality-list"></div>
+      </section>
+
+      <section id="releases" class="release-section" aria-labelledby="release-title">
+        <div class="section-heading"><p class="eyebrow">RELEASE RHYTHM</p><h2 id="release-title">建議的發版節奏</h2><p class="section-deck">每個節點可獨立發布；先以可玩的垂直切片驗證，再逐步展開內容。</p></div>
+        <div id="releaseList" class="release-timeline"></div>
+      </section>
+
+      <section class="closing-note" aria-label="進度儲存說明">
+        <span class="closing-mark" aria-hidden="true">PD</span>
+        <div><strong>一份手帳，一個瀏覽器。</strong><p>此看板不需要帳號或伺服器；追蹤狀態儲存在目前瀏覽器。要換裝置或分享進度，請使用上方「匯出備份」與「匯入進度」。</p></div>
+        <button class="button button-quiet" id="btnReset" type="button">重設追蹤狀態</button>
+      </section>
+    </main>
+
+    <footer class="site-footer"><span>豬豬夢工場 / 開發手帳</span><span>Roadmap 1.0 · 2026.11.17</span><a href="../docs/roadmap.md">閱讀完整開發藍圖 <span aria-hidden="true">↗</span></a></footer>
+    <div id="toast" class="toast" role="status" aria-live="polite"></div>
+    <script type="module" src="./src/app.js?v=20261117-2"></script>
+  </body>
+</html>
