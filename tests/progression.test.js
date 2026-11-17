@@ -165,6 +165,37 @@ function waitFor(fn, label, timeout = 8000) {
   assert.deepStrictEqual(JSON.parse(JSON.stringify(tournament.cup)), { round: 4, nextDay: null, wins: 4, ties: 0, losses: 0, missed: 0, respect: 52, awards: ['silver', 'champion'] });
   assert.strictEqual(tournament.late, null, '四場賽事完畢後不應重複觸發');
 
+  const secretTieRun = window.eval(`(() => {
+    const previous = localStorage.getItem('pdf_achievements_v1');
+    const originalRandom = Math.random;
+    try {
+      Math.random = () => 0;
+      localStorage.removeItem('pdf_achievements_v1');
+      const run = newState({ personality: 'balanced' });
+      run.stamina = 100; run.mood = 70;
+      const matches = [];
+      for (const target of RANCH_COMPETITION.rivalScores) {
+        run.int = target;
+        matches.push(resolveRanchCompetition(run, getRanchCompetitionEvent(run), { discipline: 'int' }));
+      }
+      const epilogue = getRivalSecretEpilogue(run);
+      const meta = getAchievementMeta();
+      const incomplete = { mode: 'normal', ranchCompetition: { round: 4, ties: 3, wins: 0, losses: 0, missed: 1 } };
+      const daily = { mode: 'daily', ranchCompetition: { round: 4, ties: 4, wins: 0, losses: 0, missed: 0 } };
+      return { matches, cup: run.ranchCompetition, epilogue, rendered: renderRivalSecretEpilogue(epilogue), unlocked: meta.unlocked.includes('rival_tie_4'), bonuses: meta.bonuses, incompleteEpilogue: getRivalSecretEpilogue(incomplete), dailyEligible: hasRivalTieSeason(daily) };
+    } finally { Math.random = originalRandom; if (previous === null) localStorage.removeItem('pdf_achievements_v1'); else localStorage.setItem('pdf_achievements_v1', previous); }
+  })()`);
+  assert.deepStrictEqual(Array.from(secretTieRun.matches, m => m.outcome), ['tie', 'tie', 'tie', 'tie']);
+  assert.strictEqual(secretTieRun.matches[3].secretUnlocked, true, '第四場全平手時應立即解鎖隱藏成就');
+  assert.ok(secretTieRun.matches[3].result.includes('黃緞帶的約定'));
+  assert.strictEqual(secretTieRun.cup.ties, 4);
+  assert.strictEqual(secretTieRun.unlocked, true);
+  assert.strictEqual(secretTieRun.bonuses.cha, 5, '隱藏成就應永久增加下一局魅力');
+  assert.strictEqual(secretTieRun.epilogue.title, '黃緞帶的約定');
+  assert.ok(secretTieRun.rendered.includes('兩座牧場每年輪流舉辦元元盃'));
+  assert.strictEqual(secretTieRun.incompleteEpilogue, null, '有缺賽或未全平手時不出現隱藏尾聲');
+  assert.strictEqual(secretTieRun.dailyEligible, false, '每日挑戰不計入元元隱藏條件');
+
   window.eval(`state = newState({ personality: 'balanced' }); state.day = 7; state.str = 100; Math.random = () => 0; renderAll(); window.__cupPromise = presentEvent(getRanchCompetitionEvent(state));`);
   assert.ok(doc.querySelector('#relationships').textContent.includes('認識宿敵 元元') && doc.querySelector('#relationships').textContent.includes('黃色緞帶'), '關係面板應提供元元背景故事與紀念物');
   await waitFor(() => doc.querySelector('#modalOverlay .mbtn'), '宿敵競賽選項');

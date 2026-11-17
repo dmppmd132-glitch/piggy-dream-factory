@@ -755,7 +755,25 @@ function resolveRanchCompetition(s, ev, choice) {
   cup.round = completedRound;
   cup.nextDay = completedRound < RANCH_COMPETITION.schedule.length ? RANCH_COMPETITION.schedule[completedRound] : null;
   s.ranchCompetition = cup;
-  return { result, effects, outcome, playerScore, rivalScore, discipline: choice.discipline };
+  const secretUnlocked = unlockSpecialAchievement(s, 'rival_tie_4');
+  if (secretUnlocked) result += '\n\n🎗️ 隱藏成就解鎖：「黃緞帶的約定」！元元邀你把兩座牧場的競賽變成每年都會重聚的傳統。永久魅力 +5，下一局生效。';
+  return { result, effects, outcome, playerScore, rivalScore, discipline: choice.discipline, secretUnlocked };
+}
+function hasRivalTieSeason(s) {
+  const cup = s && s.ranchCompetition;
+  return !!(s && s.mode !== 'daily' && cup && cup.round === RANCH_COMPETITION.rounds.length && cup.ties === RANCH_COMPETITION.rounds.length && cup.wins === 0 && cup.losses === 0 && cup.missed === 0);
+}
+function getRivalSecretEpilogue(s) {
+  if (!hasRivalTieSeason(s)) return null;
+  return {
+    emoji: '🎗️', title: '黃緞帶的約定',
+    story: '四場競賽的記分板上，四次都寫著「平手」。元元沒有把獎盃舉向天空，而是取出珍藏多年的半條黃緞帶，和你手中的那一半重新縫在一起。她笑著說：「小時候我們約好下次再分勝負；現在，我想改成明年也一起辦比賽，好嗎？」你點點頭。從此，兩座牧場每年輪流舉辦元元盃，冠軍獎牌掛在場邊，提醒大家最好的對手不是輸贏，而是願意陪你再跑一圈的朋友。',
+    quote: '好對手不是要把你甩在身後，而是讓你願意再跑一圈。',
+  };
+}
+function renderRivalSecretEpilogue(epilogue) {
+  if (!epilogue) return '';
+  return `<section class="scorebox" aria-label="元元隱藏尾聲" style="border-color:#d8a324;background:#fff0b8"><div style="font-size:1.6rem">${epilogue.emoji}</div><b style="font-size:1.05rem;color:#865600">🎗️ 隱藏尾聲｜${esc(epilogue.title)}</b><p style="font-weight:600;text-align:left">${esc(epilogue.story)}</p><blockquote>「${esc(epilogue.quote)}」</blockquote></section>`;
 }
 const MINIGAME_IDS = new Set(['work', 'library']);
 const MINIGAME_NAMES = { work: '點擊接乾草', library: '翻牌配對' };
@@ -812,6 +830,7 @@ const ACHIEVEMENTS = [
   { id: 'event_lover', emoji: '📮', title: '牧場交際王', desc: '一局遇見至少 6 種不同的突發事件', bonus: { int: 5 }, test: s => new Set(s.eventTitles || []).size >= 6 },
   { id: 'rich_pig', emoji: '💰', title: '小小富豬', desc: '通關時保有至少 300G', bonus: { cha: 5 }, test: s => s.gold >= 300 },
   { id: 'persona_3', emoji: '🎭', title: '千面豬生', desc: '用 3 種不同個性各通關一次', bonus: { cha: 5 }, test: s => (s.personalityCleared || 0) >= 3 },
+  { id: 'rival_tie_4', emoji: '🎗️', title: '黃緞帶的約定', desc: '在元元的四場牧場競賽中全數以平手收場', bonus: { cha: 5 }, hidden: true, test: hasRivalTieSeason },
 ];
 
 // 結局資料、判定與計分都在 game-core.js（與排行榜伺服器共用）
@@ -1465,6 +1484,15 @@ function unlockAchievements(s) {
   }
   if (newly.length) saveAchievementMeta(meta);
   return newly;
+}
+function unlockSpecialAchievement(s, id) {
+  const achievement = ACHIEVEMENTS.find(a => a.id === id);
+  const meta = getAchievementMeta();
+  if (!achievement || !achievement.hidden || meta.unlocked.includes(id) || !achievement.test(s)) return false;
+  meta.unlocked.push(id);
+  for (const [k, v] of Object.entries(achievement.bonus || {})) meta.bonuses[k] = (meta.bonuses[k] || 0) + v;
+  saveAchievementMeta(meta);
+  return true;
 }
 function saveBook(b) { try { localStorage.setItem(BOOK_KEY, JSON.stringify(b)); } catch (e) { /* 忽略 */ } }
 function getKey() { try { return (localStorage.getItem(API_KEY_STORE) || '').trim(); } catch (e) { return ''; } }
@@ -2333,6 +2361,7 @@ async function showEnding() {
   const lrank = s.runId ? localRankOf(s.runId) : null;
   const up = s.uploaded;
   const dreamEpilogue = getDreamEpilogue(s);
+  const rivalSecretEpilogue = getRivalSecretEpilogue(s);
   closeModal();
 
   const buttons = [];
@@ -2364,6 +2393,7 @@ async function showEnding() {
       <div class="scorebox">🏆 綜合分數 <b>${sc.total}</b>
         <small>能力 ${sc.base} ＋ 豬豬幣 ${sc.goldPts} ＋ 結局稀有度 ${sc.endPts}${lrank ? `｜本機第 ${lrank} 名` : ''}${up ? (s.mode === 'daily' ? `｜每日第 ${up.dailyRank} 名｜總榜第 ${up.rank} 名` : `｜線上第 ${up.rank} 名`) : ''}</small></div>
       ${dreamEpilogue ? renderDreamEpilogue(dreamEpilogue) : ''}
+      ${rivalSecretEpilogue ? renderRivalSecretEpilogue(rivalSecretEpilogue) : ''}
       <div class="news">
         <div class="mast">豬豬日報</div>
         <div class="meta"><span>豬曆第 30 天</span><span>${n.source === 'ai' ? '✨ Gemini 特約記者' : '本報編輯部'}</span><span>頭版</span></div>
@@ -2422,6 +2452,7 @@ function showLeaderboard(fromEnding = false, tab) {
 }
 
 function achievementProgress(a, s) {
+  if (a.hidden) return '尚未發現';
   if (a.id === 'no_sleep_5') return `本局最佳 ${Math.min(5, s.bestNoSleepStreak || 0)} / 5 天`;
   if (a.id === 'no_hospital') return s.hospitalCount ? `已住院 ${s.hospitalCount} 次` : '目前保持零住院';
   if (a.id === 'weight_30') return `目前體重 ${s.weight}kg，通關時需剛好 30kg`;
@@ -2435,6 +2466,7 @@ function showAchievements(fromEnding = false) {
   const meta = getAchievementMeta();
   const cards = ACHIEVEMENTS.map(a => {
     const got = meta.unlocked.includes(a.id);
+    if (a.hidden && !got) return '<div class="bcard locked"><div class="e">❔</div><div class="t">???</div><div>尚未發現的秘密成就</div><div class="small">條件未知</div><div class="stars">永久加成：？？？</div></div>';
     const bonusText = Object.entries(a.bonus).map(([k, v]) => `${LABEL[k]} +${v}`).join('、');
     return `<div class="bcard ${got ? '' : 'locked'}"><div class="e">${got ? a.emoji : '🔒'}</div><div class="t">${esc(a.title)}</div><div>${esc(a.desc)}</div><div class="small">${got ? '✅ 已解鎖' : esc(achievementProgress(a, state))}</div><div class="stars">永久加成：${esc(bonusText)}</div></div>`;
   }).join('');

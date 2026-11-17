@@ -22,7 +22,7 @@ const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
   })()`);
   window.localStorage.setItem('pdf_save_v1', JSON.stringify(snapshot));
   window.localStorage.setItem('pdf_endings_v1', JSON.stringify({ ending_a: true }));
-  window.localStorage.setItem('pdf_achievements_v1', JSON.stringify({ unlocked: ['rich_pig'], bonuses: { int: 0, str: 0, cha: 5 } }));
+  window.localStorage.setItem('pdf_achievements_v1', JSON.stringify({ unlocked: ['rich_pig', 'rival_tie_4'], bonuses: { int: 0, str: 0, cha: 10 } }));
   window.localStorage.setItem('pdf_personalities_v1', JSON.stringify({ balanced: { count: 2 } }));
   window.localStorage.setItem('pdf_gemini_key', 'must-not-leave-device');
 
@@ -33,6 +33,7 @@ const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
   assert.strictEqual(exported.data.pdf_save_v1.ranchCompetition.wins, 1, '應匯出牧場競賽戰績');
   assert.ok(exported.data.pdf_endings_v1.ending_a, '應包含結局圖鑑');
   assert.ok(exported.data.pdf_achievements_v1.unlocked.includes('rich_pig'), '應包含永久成就');
+  assert.ok(exported.data.pdf_achievements_v1.unlocked.includes('rival_tie_4'), '應包含元元隱藏成就');
   assert.ok(exported.data.pdf_personalities_v1.balanced, '應包含個性收集');
   assert.strictEqual(exported.data.pdf_gemini_key, undefined, '不可匯出 API Key');
 
