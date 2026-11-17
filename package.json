@@ -2,10 +2,10 @@
   "name": "piggy-dream-factory",
   "version": "1.1.0",
   "private": true,
-  "description": "豬豬夢工場：30 天豬生逆襲。繁體中文養成模擬 PWA，含個性系統、事件連鎖劇本與線上排行榜。",
+  "description": "豬豬夢工場：30 天豬生逆襲。繁體中文養成模擬 PWA，含個性系統、夢想專精、NPC 好感任務、事件連鎖劇本與線上排行榜。",
   "scripts": {
     "serve": "python3 -m http.server 8080",
-    "test": "npm run test:personality && npm run test:smoke && npm run test:transfer && npm run test:minigame && npm run test:legacy-season && npm run test:service-worker && npm run test:events",
+    "test": "npm run test:personality && npm run test:progression && npm run test:smoke && npm run test:transfer && npm run test:minigame && npm run test:legacy-season && npm run test:service-worker && npm run test:events",
     "test:personality": "node tests/personality.test.js",
     "test:smoke": "node tests/smoke.test.js",
     "test:transfer": "node tests/save-transfer.test.js",
@@ -13,7 +13,8 @@
     "test:legacy-season": "node tests/legacy-season.test.js",
     "test:service-worker": "node tests/service-worker.test.js",
     "test:events": "python3 tests/validate-events.py && node tests/validate-schema.js && node tests/chain-sim.js 800",
-    "build:events": "python3 tests/build-events-js.py && python3 tests/render-events.py"
+    "build:events": "python3 tests/build-events-js.py && python3 tests/render-events.py",
+    "test:progression": "node tests/progression.test.js"
   },
   "devDependencies": {
     "ajv": "^8.20.0",

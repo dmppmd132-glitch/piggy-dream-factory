@@ -17,11 +17,12 @@ const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
   const snapshot = window.eval(`(() => {
     const s = newState({ personality: 'balanced' });
     s.day = 12; s.gold = 321; s.log = ['測試日記'];
+    s.ranchCompetition = { round: 1, nextDay: 14, wins: 1, ties: 0, losses: 0, missed: 0, respect: 13, awards: [] };
     return s;
   })()`);
   window.localStorage.setItem('pdf_save_v1', JSON.stringify(snapshot));
   window.localStorage.setItem('pdf_endings_v1', JSON.stringify({ ending_a: true }));
-  window.localStorage.setItem('pdf_achievements_v1', JSON.stringify({ unlocked: ['rich_pig'], bonuses: { int: 0, str: 0, cha: 5 } }));
+  window.localStorage.setItem('pdf_achievements_v1', JSON.stringify({ unlocked: ['rich_pig', 'rival_tie_4'], bonuses: { int: 0, str: 0, cha: 10 } }));
   window.localStorage.setItem('pdf_personalities_v1', JSON.stringify({ balanced: { count: 2 } }));
   window.localStorage.setItem('pdf_gemini_key', 'must-not-leave-device');
 
@@ -29,8 +30,10 @@ const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
   assert.strictEqual(exported.format, 'piggy-dream-factory-save');
   assert.strictEqual(exported.version, 1);
   assert.strictEqual(exported.data.pdf_save_v1.gold, 321);
+  assert.strictEqual(exported.data.pdf_save_v1.ranchCompetition.wins, 1, '應匯出牧場競賽戰績');
   assert.ok(exported.data.pdf_endings_v1.ending_a, '應包含結局圖鑑');
   assert.ok(exported.data.pdf_achievements_v1.unlocked.includes('rich_pig'), '應包含永久成就');
+  assert.ok(exported.data.pdf_achievements_v1.unlocked.includes('rival_tie_4'), '應包含元元隱藏成就');
   assert.ok(exported.data.pdf_personalities_v1.balanced, '應包含個性收集');
   assert.strictEqual(exported.data.pdf_gemini_key, undefined, '不可匯出 API Key');
 
@@ -43,6 +46,7 @@ const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
   imported.data.pdf_save_v1.gold = 777;
   assert.strictEqual(window.applySaveTransfer(imported), 4);
   assert.strictEqual(JSON.parse(window.localStorage.getItem('pdf_save_v1')).gold, 777);
+  assert.strictEqual(JSON.parse(window.localStorage.getItem('pdf_save_v1')).ranchCompetition.respect, 13, '應保留宿敵敬意與競賽狀態');
   assert.strictEqual(window.localStorage.getItem('pdf_gemini_key'), 'must-not-leave-device');
   window.showSettings();
   assert.ok(window.document.getElementById('exportSaveBtn'), '設定視窗應顯示匯出按鈕');

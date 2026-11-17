@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>豬豬夢工場：30天豬生逆襲</title>
-<meta name="description" content="30 天把一隻普通小粉豬養成傳奇豬豬！繁體中文養成遊戲，含 7 種豬豬個性、心情、NPC 好感、道具商店、每日固定挑戰、天氣與成就。">
+<meta name="description" content="30 天把一隻普通小粉豬養成傳奇豬豬！繁體中文養成遊戲，含豬豬個性、夢想專精、NPC 好感任務、道具商店、每日挑戰與多種結局。">
 <meta name="theme-color" content="#8b5a2b">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" href="icon.svg" type="image/svg+xml">
@@ -86,6 +86,7 @@ button{font-family:inherit}
 .relations .relrow{display:flex;justify-content:space-between;gap:8px;padding:2px 0}
 .relations .relbar{height:7px;background:#e0d1a8;border-radius:5px;overflow:hidden;margin-top:2px}
 .relations .relfill{height:100%;background:#f06fa0;transition:width .35s}
+.dream-track,.quest-status{margin-top:6px;padding:6px 8px;border:1px solid #c6a66d;border-radius:7px;background:#fffdf0;font-size:.76rem;font-weight:700}.dream-track b{display:block}.dream-bar{height:7px;margin:4px 0;background:#e0d1a8;border-radius:5px;overflow:hidden}.dream-fill{height:100%;background:#4c9be8;transition:width .35s}.dream-steps{color:#7a6040;font-size:.72rem;font-weight:600}.tag-quest{background:#ffe7ae;color:#70410b}
 .mode-note{font-size:.75rem;color:#7a6040;text-align:center;margin:6px 0}
 .shop-list{display:grid;gap:8px}.shop-card{display:grid;grid-template-columns:1fr auto;gap:6px;align-items:center;padding:8px;border:2px solid #7f5329;border-radius:8px;background:#fffaf0}.shop-card b{display:block}.shop-card .small{display:block}.shop-actions{display:flex;gap:5px;flex-wrap:wrap;justify-content:flex-end}.shop-actions .mbtn{font-size:.82rem;padding:5px 8px}
 /* ===== 豬豬個性 ===== */
@@ -237,6 +238,21 @@ body.busy .act{pointer-events:none;opacity:.6}
 .endpig svg{width:100%;height:auto;border:3px solid var(--wood-dark);border-radius:10px;display:block}
 .sumrow{display:flex;flex-wrap:wrap;gap:6px;justify-content:center;margin:8px 0}
 .sumrow span{background:#fff;border:2px solid #5e3b1b;border-radius:8px;padding:1px 8px;font-weight:800;font-size:.85rem}
+.dream-ending{--dream-accent:#557d9f;margin:10px 0;padding:12px;border:3px solid var(--dream-accent);border-radius:12px;background:linear-gradient(135deg,#f5faff,#e7f0fb);box-shadow:0 4px 0 rgba(65,90,120,.2);animation:dreamUnfold .35s ease-out}
+.dream-ending--scholar{--dream-accent:#4678a6;background:linear-gradient(135deg,#f4fbff,#dceaf8)}
+.dream-ending--knight{--dream-accent:#587b43;background:linear-gradient(135deg,#fbffe9,#e5efd1)}
+.dream-ending--star{--dream-accent:#a3447a;background:linear-gradient(135deg,#fff5fc,#f4dfee)}
+.dream-ending-head{display:flex;align-items:center;gap:12px}
+.dream-ending-mark{display:grid;place-items:center;flex:0 0 58px;width:58px;height:58px;border:2px solid var(--dream-accent);border-radius:50%;background:rgba(255,255,255,.8);font-size:2rem;box-shadow:0 2px 0 rgba(60,45,30,.16)}
+.dream-ending-kicker{margin:0;color:var(--dream-accent);font-size:.72rem;font-weight:900;letter-spacing:.04em}
+.dream-ending h3{margin:2px 0 5px;font-size:1.12rem;line-height:1.3}
+.dream-ending p{margin:0;font-size:.86rem;line-height:1.65}
+.dream-ending-progress{display:flex;align-items:center;gap:8px;margin-top:10px;font-size:.75rem;font-weight:800}
+.dream-ending-meter{flex:1;height:8px;border-radius:6px;background:rgba(80,70,50,.16);overflow:hidden}
+.dream-ending-meter i{display:block;height:100%;background:var(--dream-accent);border-radius:inherit}
+.dream-ending blockquote{margin:9px 0 0;padding:6px 9px;border-left:3px solid var(--dream-accent);background:rgba(255,255,255,.55);font-size:.8rem;font-style:italic}
+@keyframes dreamUnfold{from{transform:translateY(5px);opacity:.65}to{transform:translateY(0);opacity:1}}
+@media(prefers-reduced-motion:reduce){.dream-ending{animation:none}}
 
 .toast{position:fixed;left:50%;top:14px;transform:translateX(-50%);background:#4b2f14;color:#fff3c4;padding:8px 16px;border-radius:20px;font-weight:700;z-index:80;box-shadow:0 4px 12px rgba(0,0,0,.35);max-width:90vw;text-align:center}
 .update-prompt{position:fixed;left:50%;bottom:16px;transform:translateX(-50%);display:flex;align-items:center;gap:10px;width:min(520px,calc(100vw - 24px));padding:10px 12px;background:#fff3c4;color:#4b2f14;border:3px solid #5e3b1b;border-radius:10px;box-shadow:0 5px 16px rgba(0,0,0,.32);z-index:90;font-weight:800}
@@ -489,7 +505,7 @@ body.busy .act{pointer-events:none;opacity:.6}
       <div class="pigtag" id="pigTitle">平凡小粉豬</div>
 
       <div class="stats" id="stats"></div>
-      <div class="relations" id="relationships" aria-label="NPC 好感度"></div>
+      <div class="relations" id="relationships" aria-label="NPC 好感度、任務與夢想進度"></div>
     </section>
 
     <!-- 右：筆記本（行程與日記） -->
@@ -589,6 +605,176 @@ const MINIGAME_ITEMS = [
 const ALL_ITEMS = SHOP_ITEMS.concat(MINIGAME_ITEMS);
 const RELATION_NAMES = { teacher: '母牛老師', truffle: '松露攤老闆' };
 const ACTION_RELATIONS = { library: { teacher: 3 }, charm: { teacher: 1 }, work: { truffle: 2 }, feast: { truffle: 2 } };
+const RELATION_EMOJI = { teacher: '🐮', truffle: '🍄' };
+const DREAM_SPECIALIZATIONS = [
+  { id: 'scholar', emoji: '📚', name: '學者之夢', focus: 'int', focusName: '智慧', tagline: '把知識分享給整座牧場。', milestones: [25, 45, 65] },
+  { id: 'knight', emoji: '🛡️', name: '騎士之夢', focus: 'str', focusName: '力量', tagline: '用勇氣守護牧場裡的大家。', milestones: [25, 45, 65] },
+  { id: 'star', emoji: '🌟', name: '明星之夢', focus: 'cha', focusName: '魅力', tagline: '站上舞台，讓每個人都看見自己。', milestones: [25, 45, 65] },
+];
+const getDream = s => DREAM_SPECIALIZATIONS.find(d => d.id === (s && s.dreamId)) || null;
+const DREAM_EPILOGUES = {
+  scholar: [
+    { emoji: '📖', title: '書頁上的第一顆星', story: () => '你把第一本故事書帶到牧場廣場。小雞聽完後說：「等我會認字，也要念給下一個人聽。」你的夢想還在起步，知識卻已經開始旅行。', quote: '知識不是藏起來的寶物，而是一起看見的光。' },
+    { emoji: '🚌', title: '牧場巡迴書車', story: level => `你把巡迴書車開到羊圈、菜園和溪邊；每到一站，就多一個孩子帶著問題回家。你完成了 ${level} / 3 個夢想里程碑，下一本書也有了讀者。`, quote: '每翻一頁，就有人看見更大的世界。' },
+    { emoji: '🌌', title: '星圖學院創辦人', story: () => '你把三枚星星徽章掛在學院門口，成立牧場第一所星圖學院。母牛老師坐在第一排，而每個新生都能免費借一本書。', quote: '知識不是藏起來的寶物，而是一起看見的光。' },
+  ],
+  knight: [
+    { emoji: '🛡️', title: '第一枚守望徽章', story: () => '你在牧場門口掛起手繪盾牌，守夜時也替迷路的小狼留一盞燈。騎士誓言的第一條不是打敗敵人，而是不讓任何人獨自害怕。', quote: '真正的勇敢，是讓別人不必害怕。' },
+    { emoji: '🐺', title: '牧場和平護衛隊', story: level => `你完成了 ${level} / 3 個夢想里程碑，帶領守望隊修好河堤、巡守夜路。狼群也加入輪值表，最後還有人帶來松露宵夜。`, quote: '守護不是築起更高的牆，而是多留一盞燈。' },
+    { emoji: '🏅', title: '金盾守護騎士', story: () => '三枚守護徽章都亮起來那晚，牧場長老授你金盾。你守護的不只是一座牧場，還有曾經被大家誤會、如今一起巡夜的狼群。', quote: '我的盾牌朝向危險，永遠不朝向朋友。' },
+  ],
+  star: [
+    { emoji: '🎤', title: '追光的第一步', story: () => '你搭起第一座木箱舞台，觀眾只有母牛老師和幾隻小雞；最後一排的小雞跟著唱完副歌，那就是你的第一場滿場演出。', quote: '只要有人願意聽，這裡就是我的舞台。' },
+    { emoji: '🎭', title: '牧場舞台主理人', story: level => `你完成了 ${level} / 3 個夢想里程碑，把小小舞台變成全牧場巡演。每一場謝幕，你都把最後一束燈留給幫忙搭台的朋友。`, quote: '聚光燈很亮，但一起搭台的人更耀眼。' },
+    { emoji: '🌠', title: '牧場銀河巨星', story: () => '你帶著牧場夥伴巡迴整個銀河，返場時全宇宙的星星一起閃爍。最後一首歌，你把聚光燈轉向觀眾：「沒有你們，這個夢就不完整。」', quote: '謝謝你們，讓我的夢有了合唱。' },
+  ],
+};
+function getDreamEpilogue(s) {
+  const dream = getDream(s);
+  if (!dream || !s || s.mode === 'daily') return null;
+  const level = clamp(Math.floor(Number(s.dreamMilestones) || 0), 0, dream.milestones.length);
+  const tier = level === 0 ? 0 : (level === dream.milestones.length ? 2 : 1);
+  const story = DREAM_EPILOGUES[dream.id][tier];
+  return { ...story, story: story.story(level), dream, level, complete: level === dream.milestones.length };
+}
+function renderDreamEpilogue(epilogue) {
+  if (!epilogue) return '';
+  const { dream, level, complete } = epilogue;
+  return `<section class="dream-ending dream-ending--${dream.id}" aria-label="${esc(dream.name)}夢想專屬結局"><div class="dream-ending-head"><span class="dream-ending-mark" aria-hidden="true">${esc(epilogue.emoji)}</span><div><div class="dream-ending-kicker">✨ 夢想專屬結局｜${esc(dream.name)}</div><h3>${esc(epilogue.title)}</h3><p>${esc(epilogue.story)}</p></div></div><div class="dream-ending-progress"><span>里程碑</span><div class="dream-ending-meter" role="progressbar" aria-label="夢想里程碑進度" aria-valuemin="0" aria-valuemax="3" aria-valuenow="${level}"><i style="width:${level / 3 * 100}%"></i></div><strong>${level} / 3｜${complete ? '夢想圓滿' : '旅程未完'}</strong></div><blockquote>「${esc(epilogue.quote)}」</blockquote></section>`;
+}
+const DREAM_SPECIALIZATION_EVENTS = {
+  scholar: { tag: 'int', title: '燈塔圖書館的遺失星頁', emoji: '📚', story: '昨夜一陣大風吹散母牛老師整理的星圖，最關鍵的一頁落在池塘與燈塔之間。她邀你帶著小雞一起尋回線索，今晚的觀星課就等你們了。', choices: [
+    { text: '趁露水未乾，解讀星圖殘痕', result: '你把破碎線索重新排好，找回最重要的星頁；老師將你的解讀補進教材。', effects: { int: 6, stamina: -14, mood: 3 }, relationship: { teacher: 4 } },
+    { text: '帶小雞沿路訪問找線索', result: '小雞們各自記得一小段路線，拼起來竟比原圖更完整，還多出一張大家共同畫的星圖。', effects: { int: 3, cha: 4, stamina: -7, mood: 6 }, relationship: { teacher: 6 } },
+  ] },
+  knight: { tag: 'str', title: '暴雨前的斷橋求援', emoji: '🛡️', story: '溪水暴漲前，巡邏隊發現木橋斷了一截，對岸還有一車小羊回不了家。隊長把燈籠交給你：「要先搶修，還是想個安全的渡河辦法？」', choices: [
+    { text: '扛起梁木，架起臨時橋', result: '你頂住沉重梁木直到最後一隻小羊平安過橋，大家為你的勇氣掛上守望徽章。', effects: { str: 6, stamina: -18, mood: 5 } },
+    { text: '用繩索和滑輪設計渡河線', result: '你把繩索固定在兩岸，讓小羊一車一車安全通過，隊長說這是力量與智慧合作的勝利。', effects: { int: 4, str: 3, stamina: -8, gold: 8, mood: 3 } },
+  ] },
+  star: { tag: 'cha', title: '月光舞台的臨時救場', emoji: '🌟', story: '牧場月光演出的主唱突然失聲，台下的觀眾已經坐滿。燈光師把麥克風遞給你：「現在上台，或把大家都變成今晚的主角？」', choices: [
+    { text: '站上舞台，獨唱壓軸曲', result: '你一開口，全場跟著節拍揮動蹄子；演出大成功，還收到一袋打賞。', effects: { cha: 7, stamina: -16, gold: 16, mood: 5 } },
+    { text: '帶觀眾合唱，讓全場一起發光', result: '你教大家簡單的副歌，整座牧場變成合唱團；散場後，每個人都說那是最難忘的一夜。', effects: { cha: 4, int: 2, stamina: -5, gold: 6, mood: 10 } },
+  ] },
+};
+function getDreamSpecializationEvent(s) {
+  if (!s || s.mode === 'daily') return null;
+  const dream = getDream(s);
+  const event = dream && DREAM_SPECIALIZATION_EVENTS[dream.id];
+  if (!event || (s.eventTitles || []).includes(event.title) || randomFor(s) >= 0.45) return null;
+  return { ...JSON.parse(JSON.stringify(event)), source: 'local' };
+}
+const RIVAL_PROFILE = {
+  name: '元元',
+  hometown: '晨露牧場',
+  personality: '認真細心、勝負心強，卻總會替對手加油。',
+  keepsake: '童年豐收節並列第一時，和你平分的黃色緞帶。',
+  backstory: '元元在鄰近的晨露牧場長大，做事認真又愛把每次練習記進小冊子。她和你第一次相識，是在童年豐收節的三項挑戰裡：你們一路追到終點，最後同分並列第一，主辦人只剩一條黃色緞帶，兩隻小豬便把它剪成兩半各自珍藏。從那天起，元元每年都回來找你較量。她嘴上說一定要分出勝負，其實最期待的是和你一起把牧場競賽辦得更熱鬧，讓每個小豬都有值得回憶的舞台。',
+  motto: '好對手不是要把你甩在身後，而是讓你願意再跑一圈。',
+};
+const RANCH_COMPETITION = {
+  rival: RIVAL_PROFILE.name,
+  rivalScores: [18, 27, 36, 45],
+  schedule: [7, 14, 21, 28],
+  disciplines: {
+    int: { label: '智慧解謎賽', emoji: '🧩', text: '用智慧破解謎題', stamina: -7 },
+    str: { label: '力量障礙賽', emoji: '🏋️', text: '衝過力量障礙', stamina: -13 },
+    cha: { label: '魅力舞台賽', emoji: '🎤', text: '登台炒熱氣氛', stamina: -9 },
+  },
+  rounds: [
+    { title: '牧場新秀賽', emoji: '🏁', story: '元元從晨露牧場趕來，胸前別著半條褪色的黃緞帶：「還記得豐收節那場平手嗎？我一直留著它，等今天把比賽跑完。」她朝你伸出蹄子，邀你選一項本領應戰。',
+      playerLines: { int: '把去年沒解完的謎題拿來吧！', str: '這次一起衝過終點線！', cha: '讓我們為新秀做場好看的示範！' },
+      replies: { win: '你終於把那場平手跑完了！', tie: '那條黃緞帶果然沒白留。', loss: '今天你追得好近，我們下次再跑！' } },
+    { title: '宿敵挑戰杯', emoji: '🏆', story: '元元翻開隨身小冊子，裡頭仔細記著你上次的表現，封底還夾著她珍藏的半條黃緞帶：「我不是偷看答案，是認真研究我的對手！」她眨眨眼，說自己也準備了新招。',
+      playerLines: { int: '我也做了功課，謎題上見真章！', str: '訓練成果就在跑道上見真章！', cha: '讓看台上的每個人都加入吧！' },
+      replies: { win: '你連我新練的招都看出來了！', tie: '看來我們又寫下新的平手紀錄！', loss: '這一分我先收下，下一場可不一定喔！' } },
+    { title: '牧場季中決賽', emoji: '🥇', story: '通往總決賽的資格只剩一個。元元收起小冊子，難得認真地說：「我每年回來，不只是想贏你；我想和你一起辦一場讓所有牧場小豬都能參加的比賽。」她遞來毛巾，邀你迎接季中決戰。',
+      playerLines: { int: '我們一起想出人人都能玩的規則！', str: '我會全力衝刺，也會等朋友一起！', cha: '把競賽變成大家都能加入的舞台！' },
+      replies: { win: '有你一起想辦法，冠軍賽才有意義！', tie: '你也想把比賽辦給大家玩，對吧？', loss: '先拿下資格吧，總決賽我們一起加油！' } },
+    { title: '牧場冠軍總決賽', emoji: '👑', story: '全牧場聚在終點線旁，元元把兩半黃緞帶重新繫在一起，繫上金色獎牌：「這場比賽結束後，陪我把獎盃搬回兩座牧場，好嗎？」她朝你伸出蹄子，全場等待最後一回合。',
+      playerLines: { int: '最後一題，我們一起找答案！', str: '起跑線上全力以赴，終點線後擊掌！', cha: '把這場勝負獻給所有加油的朋友！' },
+      replies: { win: '把獎盃一起抬回牧場，好嗎？', tie: '我們又是並列第一，真像那年一樣！', loss: '獎盃先讓你拿著；明年我還會來挑戰！' } },
+  ],
+};
+function newRanchCompetition() {
+  return { round: 0, nextDay: RANCH_COMPETITION.schedule[0], wins: 0, ties: 0, losses: 0, missed: 0, respect: 0, awards: [] };
+}
+function getRanchCompetitionEvent(s) {
+  if (!s || s.mode === 'daily') return null;
+  const cup = s.ranchCompetition;
+  if (!cup || cup.round >= RANCH_COMPETITION.rounds.length) return null;
+  const round = clamp(Math.floor(Number(cup.round) || 0), 0, RANCH_COMPETITION.rounds.length - 1);
+  const story = RANCH_COMPETITION.rounds[round];
+  const disciplines = Object.entries(RANCH_COMPETITION.disciplines);
+  return {
+    source: 'competition',
+    competition: { round, rivalScore: RANCH_COMPETITION.rivalScores[round] },
+    title: story.title, emoji: story.emoji, story: `${story.story} 比分＝所選能力＋臨場 0～8 分；低體力或低心情會影響表現。`,
+    choices: disciplines.map(([stat, event]) => ({
+      text: `${event.emoji} ${event.label}｜「${story.playerLines[stat]}」（${LABEL[stat]} ${s[stat]}｜體力 ${event.stamina}）`,
+      discipline: stat,
+      result: '',
+      effects: {},
+    })),
+  };
+}
+function resolveRanchCompetition(s, ev, choice) {
+  const discipline = RANCH_COMPETITION.disciplines[choice && choice.discipline];
+  if (!discipline || !ev || !ev.competition) return null;
+  const cup = s.ranchCompetition || newRanchCompetition();
+  const stat = choice.discipline;
+  const fatigue = s.stamina < 20 ? -4 : s.stamina < 40 ? -2 : 0;
+  const mood = s.mood >= 80 ? 2 : s.mood < 25 ? -2 : 0;
+  const playerScore = (Number(s[stat]) || 0) + fatigue + mood + rand(0, 8, s);
+  const rivalScore = ev.competition.rivalScore + rand(0, 8, s);
+  const margin = playerScore - rivalScore;
+  const outcome = margin >= 3 ? 'win' : margin <= -3 ? 'loss' : 'tie';
+  const effects = { [stat]: outcome === 'win' ? 4 : outcome === 'tie' ? 2 : 1, stamina: discipline.stamina, gold: outcome === 'win' ? 25 + ev.competition.round * 10 : outcome === 'tie' ? 14 : 6, mood: outcome === 'win' ? 7 : outcome === 'tie' ? 4 : 2 };
+  const rivalLine = RANCH_COMPETITION.rounds[ev.competition.round].replies[outcome];
+  const dialogue = `你回應元元：「${RANCH_COMPETITION.rounds[ev.competition.round].playerLines[stat]}」元元${outcome === 'win' ? '笑著說' : outcome === 'tie' ? '點頭笑道' : '拍拍你的肩說'}：「${rivalLine}」`;
+  let result = '';
+  if (outcome === 'win') {
+    cup.wins = (cup.wins || 0) + 1; cup.respect = Math.min(100, (cup.respect || 0) + 13);
+    result = `你拿下${discipline.label}！小豬 ${playerScore} 分，元元 ${rivalScore} 分；她把這回合的彩帶別到你胸前。`;
+  } else if (outcome === 'tie') {
+    cup.ties = (cup.ties || 0) + 1; cup.respect = Math.min(100, (cup.respect || 0) + 9);
+    result = `這場${discipline.label}幾乎平手！你得 ${playerScore} 分，元元得 ${rivalScore} 分，兩隻豬擊掌約好下次再分勝負。`;
+  } else {
+    cup.losses = (cup.losses || 0) + 1; cup.respect = Math.min(100, (cup.respect || 0) + 6);
+    result = `元元以 ${rivalScore} 比 ${playerScore} 分先抵達終點。你沒有放棄到最後一刻，她仍把一枚參與徽章交給你。`;
+  }
+  result += `\n\n${dialogue}`;
+  const completedRound = ev.competition.round + 1;
+  if (outcome === 'win' && cup.wins >= 2 && !cup.awards.includes('silver')) {
+    cup.awards.push('silver'); effects.gold += 35; effects.cha = (effects.cha || 0) + 2;
+    result += ' 這已是你本季第二勝，獲頒「銀蹄獎盃」！';
+  }
+  if (outcome === 'win' && cup.wins >= 4 && !cup.awards.includes('champion')) {
+    cup.awards.push('champion'); effects.gold += 80; effects.cha = (effects.cha || 0) + 4;
+    result += ' 四戰全勝！你和元元並肩舉起「牧場總冠軍」金盃。';
+  }
+  cup.round = completedRound;
+  cup.nextDay = completedRound < RANCH_COMPETITION.schedule.length ? RANCH_COMPETITION.schedule[completedRound] : null;
+  s.ranchCompetition = cup;
+  const secretUnlocked = unlockSpecialAchievement(s, 'rival_tie_4');
+  if (secretUnlocked) result += '\n\n🎗️ 隱藏成就解鎖：「黃緞帶的約定」！元元邀你把兩座牧場的競賽變成每年都會重聚的傳統。永久魅力 +5，下一局生效。';
+  return { result, effects, outcome, playerScore, rivalScore, discipline: choice.discipline, secretUnlocked };
+}
+function hasRivalTieSeason(s) {
+  const cup = s && s.ranchCompetition;
+  return !!(s && s.mode !== 'daily' && cup && cup.round === RANCH_COMPETITION.rounds.length && cup.ties === RANCH_COMPETITION.rounds.length && cup.wins === 0 && cup.losses === 0 && cup.missed === 0);
+}
+function getRivalSecretEpilogue(s) {
+  if (!hasRivalTieSeason(s)) return null;
+  return {
+    emoji: '🎗️', title: '黃緞帶的約定',
+    story: '四場競賽的記分板上，四次都寫著「平手」。元元沒有把獎盃舉向天空，而是取出珍藏多年的半條黃緞帶，和你手中的那一半重新縫在一起。她笑著說：「小時候我們約好下次再分勝負；現在，我想改成明年也一起辦比賽，好嗎？」你點點頭。從此，兩座牧場每年輪流舉辦元元盃，冠軍獎牌掛在場邊，提醒大家最好的對手不是輸贏，而是願意陪你再跑一圈的朋友。',
+    quote: '好對手不是要把你甩在身後，而是讓你願意再跑一圈。',
+  };
+}
+function renderRivalSecretEpilogue(epilogue) {
+  if (!epilogue) return '';
+  return `<section class="scorebox" aria-label="元元隱藏尾聲" style="border-color:#d8a324;background:#fff0b8"><div style="font-size:1.6rem">${epilogue.emoji}</div><b style="font-size:1.05rem;color:#865600">🎗️ 隱藏尾聲｜${esc(epilogue.title)}</b><p style="font-weight:600;text-align:left">${esc(epilogue.story)}</p><blockquote>「${esc(epilogue.quote)}」</blockquote></section>`;
+}
 const MINIGAME_IDS = new Set(['work', 'library']);
 const MINIGAME_NAMES = { work: '點擊接乾草', library: '翻牌配對' };
 const MINIGAME_HARD_DAY = 8;
@@ -599,6 +785,20 @@ const LEGACY_TRAITS = [
   { id: 'tough_hide', emoji: '🧱', name: '厚實皮毛', desc: '代代相傳的健康體魄，下一代開局體力 +10。', bonus: { stamina: 10 } },
   { id: 'golden_hoof', emoji: '🪙', name: '黃金豬蹄', desc: '祖先留下做生意的直覺，下一代開局豬豬幣 +50。', bonus: { gold: 50 } },
 ];
+function checkDreamMilestones(s) {
+  const dream = getDream(s);
+  if (!dream || s.mode === 'daily') return [];
+  const rewards = [];
+  let done = clamp(Math.floor(Number(s.dreamMilestones) || 0), 0, dream.milestones.length);
+  while (done < dream.milestones.length && Number(s[dream.focus]) >= dream.milestones[done]) {
+    done++;
+    const before = Number(s[dream.focus]) || 0;
+    s[dream.focus] = clamp(before + 2, LIMITS[dream.focus][0], LIMITS[dream.focus][1]);
+    rewards.push({ level: done, focus: dream.focus, bonus: s[dream.focus] - before, target: dream.milestones[done - 1] });
+  }
+  s.dreamMilestones = done;
+  return rewards;
+}
 
 const FLAVOR = {
   library: ['豬豬抱著厚厚的書啃了一整天，腦袋鼓鼓的。', '在圖書館發現一本《泥巴與數學》，看得入迷。', '一邊翻書一邊流口水，居然還記住了！'],
@@ -630,6 +830,7 @@ const ACHIEVEMENTS = [
   { id: 'event_lover', emoji: '📮', title: '牧場交際王', desc: '一局遇見至少 6 種不同的突發事件', bonus: { int: 5 }, test: s => new Set(s.eventTitles || []).size >= 6 },
   { id: 'rich_pig', emoji: '💰', title: '小小富豬', desc: '通關時保有至少 300G', bonus: { cha: 5 }, test: s => s.gold >= 300 },
   { id: 'persona_3', emoji: '🎭', title: '千面豬生', desc: '用 3 種不同個性各通關一次', bonus: { cha: 5 }, test: s => (s.personalityCleared || 0) >= 3 },
+  { id: 'rival_tie_4', emoji: '🎗️', title: '黃緞帶的約定', desc: '在元元的四場牧場競賽中全數以平手收場', bonus: { cha: 5 }, hidden: true, test: hasRivalTieSeason },
 ];
 
 // 結局資料、判定與計分都在 game-core.js（與排行榜伺服器共用）
@@ -657,9 +858,10 @@ function newState(options = {}) {
   const legacyTrait = mode === 'daily' ? null : (LEGACY_TRAITS.find(t => t.id === options.legacyTrait) || null);
   const s = {
     v: 1, mode, challengeDate, seed, rngState: seed, dailyEventOrder: [], dailyEventIndex: 0,
-    personality, legacyTrait: legacyTrait && legacyTrait.id, seasonalId: getSeasonalEvent(utcToday()) ? getSeasonalEvent(utcToday()).id : null,
+    personality, dreamId: mode === 'daily' ? null : (DREAM_SPECIALIZATIONS.some(d => d.id === options.dreamId) ? options.dreamId : null),
+    dreamMilestones: 0, legacyTrait: legacyTrait && legacyTrait.id, seasonalId: getSeasonalEvent(utcToday()) ? getSeasonalEvent(utcToday()).id : null,
     day: 1, stamina: 100, int: 10 + bonus.int, str: 10 + bonus.str, cha: 10 + bonus.cha, weight: 30, gold: 100, mood: 70,
-    lastActionId: null, sameActionStreak: 0, relationships: { teacher: 0, truffle: 0 }, inventory: {},
+    lastActionId: null, sameActionStreak: 0, relationships: { teacher: 0, truffle: 0 }, npcQuestProgress: { teacher: 0, truffle: 0 }, ranchCompetition: mode === 'daily' ? null : newRanchCompetition(), inventory: {},
     sickDays: 0, nextEventDay: mode === 'daily' ? 3 : 0, hit: {}, eventTitles: [], log: [],
     pendingEvent: null, ended: false, endingId: null, news: null, hospitalCount: 0, aiEvents: 0,
     weather: null, weatherSeen: [], noSleepStreak: 0, bestNoSleepStreak: 0, newAchievements: [],
@@ -681,6 +883,7 @@ function newState(options = {}) {
   if (mode !== 'daily') {
     const span = getPersonality(s).eventInterval || [3, 4];
     s.nextEventDay = rand(span[0], span[1], s);
+    checkDreamMilestones(s);
   }
   return s;
 }
@@ -727,7 +930,8 @@ function runAction(s, a, quality = 1) {
     if (s.stamina < 25 || s.sickDays > 0) { g = Math.max(1, Math.round(g * 0.7)); weak = true; }
     if (lowMood) { g = Math.max(1, Math.round(g * 0.75)); weak = true; }
     else if (s.mood >= 80) g += 1;
-    g = Math.max(1, Math.round(g * PigPersonalities.growthFor(p, a.main) * miniQuality));
+    const dreamBoost = getDream(s) && getDream(s).focus === a.main ? 1.12 : 1;
+    g = Math.max(1, Math.round(g * PigPersonalities.growthFor(p, a.main) * dreamBoost * miniQuality));
     d[a.main] = (d[a.main] || 0) + g;
   }
   s.sameActionStreak = repeated ? (s.sameActionStreak || 1) + 1 : 1;
@@ -777,6 +981,10 @@ function checkEventTrigger(s) {
     }
   }
   if (found) return found;
+  const competition = s.ranchCompetition;
+  if (competition && competition.round < RANCH_COMPETITION.schedule.length && s.day >= competition.nextDay) {
+    return { reason: `牧場競賽第 ${competition.round + 1} 回合`, competition: true };
+  }
   if (s.day >= s.nextEventDay) return { reason: '日常突發事件', tag: null };
   return null;
 }
@@ -1031,6 +1239,48 @@ function pickLocalEvent(s, tag) {
   return JSON.parse(JSON.stringify(pick(tagged.length ? tagged : pool)));
 }
 
+// NPC 好感任務線：在一般養成既有的突發事件日出場，不額外消耗行動日。
+const NPC_QUESTLINES = {
+  teacher: [
+    { unlock: 20, title: '老師的藏書票', emoji: '📚', story: '母牛老師從抽屜拿出一張泛黃藏書票：「牧場圖書館要整理舊書，我想讓這些故事重新被大家看見。你願意幫忙嗎？」', chapter: 1,
+      choices: [
+        { text: '整理藏書並寫上推薦', result: '你把最有趣的書放到入口，還寫了簡短導讀。老師說，第一次看到小豬把書介紹得這麼生動。', effects: { int: 4, stamina: -6, mood: 3 }, relationship: { teacher: 6 } },
+        { text: '帶小朋友做故事時間', result: '你把故事講得活靈活現，孩子們散場時還追著問下一集。', effects: { cha: 4, stamina: -4, gold: 10 }, relationship: { teacher: 6 } },
+        { text: '🛡️ 騎士專屬：護送書車', result: '你推著滿載書籍的書車走遍牧場，證明守護知識也是騎士的使命。', requires: { dream: 'knight' }, effects: { str: 5, stamina: -8, mood: 4 }, relationship: { teacher: 7 } },
+      ] },
+    { unlock: 50, title: '牧場小老師試教', emoji: '🐮', chapter: 2, story: '孩子們排隊請你代上一堂課。母牛老師笑著遞來粉筆：「今天的課，交給你決定要怎麼教。」',
+      choices: [
+        { text: '用有趣實驗教數學', result: '大家一邊玩一邊學會了乘法，老師把你的教案收進教學資料夾。', effects: { int: 6, mood: 5, stamina: -6 }, relationship: { teacher: 8 } },
+        { text: '先聽每個學生分享', result: '你讓每個孩子都有機會說話，教室裡多了許多新的點子。', effects: { cha: 4, gold: 12, mood: 5 }, relationship: { teacher: 8 } },
+        { text: '📚 學者專屬：編寫星星課本', result: '你把觀星和數學編成一本小課本，母牛老師決定和你共同署名出版。', requires: { dream: 'scholar' }, effects: { int: 8, stamina: -8, gold: 12 }, relationship: { teacher: 10 } },
+      ] },
+  ],
+  truffle: [
+    { unlock: 20, title: '松露攤的新食譜', emoji: '🍄', chapter: 1, story: '松露攤老闆正在試做新醬料，桌上擺著兩本帳本和一鍋冒泡的醬汁：「小豬，幫我看看哪邊值得先改？」',
+      choices: [
+        { text: '一起調整醬料比例', result: '你找到松露與蜂蜜最剛好的比例，新醬料香得連隔壁攤都跑來問。', effects: { cha: 4, stamina: -4, mood: 3 }, relationship: { truffle: 6 } },
+        { text: '幫忙整理成本帳本', result: '你把進貨和銷售記得清清楚楚，老闆發現終於知道錢都花去哪裡了。', effects: { int: 4, gold: 14 }, relationship: { truffle: 6 } },
+        { text: '🌟 明星專屬：拍一支試吃短片', result: '你一轉圈再咬一口，短片立刻爆紅，新醬料當天就賣到缺貨。', requires: { dream: 'star' }, effects: { cha: 6, gold: 18, stamina: -5 }, relationship: { truffle: 7 } },
+      ] },
+    { unlock: 50, title: '松露攤的合作邀請', emoji: '🤝', chapter: 2, story: '老闆收到大餐廳的合作邀請，卻擔心小攤會失去自己的味道。他把合約放到桌上，想聽聽你的看法。',
+      choices: [
+        { text: '簽下合作，擴大生意', result: '你替老闆爭取到保留招牌食譜的條款，合作收入也讓小攤換了新招牌。', effects: { gold: 42, int: 3 }, relationship: { truffle: 9 } },
+        { text: '留在牧場，教鄰居做醬', result: '你們成立小小松露合作社，大家都能分享食譜，也一起分擔成本。', effects: { cha: 5, gold: 16, mood: 6 }, relationship: { truffle: 10 } },
+      ] },
+  ],
+};
+function getNpcQuestEvent(s) {
+  if (!s || s.mode === 'daily') return null;
+  const order = ['teacher', 'truffle'];
+  for (const npc of order) {
+    const progress = clamp(Math.floor(Number(s.npcQuestProgress && s.npcQuestProgress[npc]) || 0), 0, NPC_QUESTLINES[npc].length);
+    const quest = NPC_QUESTLINES[npc][progress];
+    if (!quest || (Number(s.relationships && s.relationships[npc]) || 0) < quest.unlock) continue;
+    return { source: 'quest', quest: { npc, chapter: quest.chapter }, tag: npc === 'teacher' ? 'int' : 'gold', title: quest.title, emoji: quest.emoji, story: quest.story, choices: JSON.parse(JSON.stringify(quest.choices)) };
+  }
+  return null;
+}
+
 // 豬豬外觀判定（給 SVG 用）
 function getMood(s) {
   if (s.sickDays > 0 || s.stamina <= 10) return 'sick';
@@ -1144,6 +1394,7 @@ function loadState(key = SAVE_KEY) {
     if (!raw) return null;
     const s = JSON.parse(raw);
     if (!s || s.v !== 1 || typeof s.day !== 'number') return null;
+    const hadRanchCompetition = Object.prototype.hasOwnProperty.call(s, 'ranchCompetition');
     const merged = Object.assign(newState(), s);
     if (!WEATHER[merged.weather]) merged.weather = rollWeather(merged);
     if (!Array.isArray(merged.weatherSeen)) merged.weatherSeen = [merged.weather];
@@ -1162,10 +1413,31 @@ function loadState(key = SAVE_KEY) {
     merged.lastActionId = typeof merged.lastActionId === 'string' ? merged.lastActionId : null;
     merged.relationships = Object.assign({ teacher: 0, truffle: 0 }, merged.relationships && typeof merged.relationships === 'object' ? merged.relationships : {});
     for (const k of Object.keys(merged.relationships)) merged.relationships[k] = clamp(Number(merged.relationships[k]) || 0, 0, 100);
+    merged.dreamId = merged.mode === 'daily' || !DREAM_SPECIALIZATIONS.some(d => d.id === merged.dreamId) ? null : merged.dreamId;
+    const savedDream = getDream(merged);
+    merged.dreamMilestones = savedDream ? clamp(Math.floor(Number(merged.dreamMilestones) || 0), 0, savedDream.milestones.length) : 0;
+    merged.npcQuestProgress = Object.assign({ teacher: 0, truffle: 0 }, merged.npcQuestProgress && typeof merged.npcQuestProgress === 'object' ? merged.npcQuestProgress : {});
+    for (const npc of Object.keys(RELATION_NAMES)) merged.npcQuestProgress[npc] = clamp(Math.floor(Number(merged.npcQuestProgress[npc]) || 0), 0, NPC_QUESTLINES[npc].length);
+    if (merged.mode === 'daily') merged.ranchCompetition = null;
+    else {
+      const cup = Object.assign(newRanchCompetition(), merged.ranchCompetition && typeof merged.ranchCompetition === 'object' ? merged.ranchCompetition : {});
+      cup.round = hadRanchCompetition
+        ? clamp(Math.floor(Number(cup.round) || 0), 0, RANCH_COMPETITION.schedule.length)
+        : RANCH_COMPETITION.schedule.filter(day => day < merged.day).length;
+      cup.missed = hadRanchCompetition ? clamp(Math.floor(Number(cup.missed) || 0), 0, cup.round) : cup.round;
+      cup.wins = clamp(Math.floor(Number(cup.wins) || 0), 0, cup.round - cup.missed);
+      cup.ties = clamp(Math.floor(Number(cup.ties) || 0), 0, cup.round - cup.missed - cup.wins);
+      cup.losses = clamp(Math.floor(Number(cup.losses) || 0), 0, cup.round - cup.wins - cup.ties - cup.missed);
+      cup.missed += cup.round - cup.wins - cup.ties - cup.losses - cup.missed;
+      cup.respect = clamp(Math.floor(Number(cup.respect) || 0), 0, 100);
+      cup.awards = Array.isArray(cup.awards) ? cup.awards.filter(id => ['silver', 'champion'].includes(id)) : [];
+      cup.nextDay = cup.round >= RANCH_COMPETITION.schedule.length ? null : RANCH_COMPETITION.schedule[cup.round];
+      merged.ranchCompetition = cup;
+    }
     merged.inventory = merged.inventory && typeof merged.inventory === 'object' ? merged.inventory : {};
     for (const item of ALL_ITEMS) merged.inventory[item.id] = Math.max(0, Math.floor(Number(merged.inventory[item.id]) || 0));
     if (merged.mode === 'daily') {
-      if (!merged.challengeDate || !Number.isInteger(merged.seed)) merged.mode = 'normal';
+      if (!merged.challengeDate || !Number.isInteger(merged.seed)) { merged.mode = 'normal'; merged.ranchCompetition = newRanchCompetition(); }
       else {
         if (!Number.isInteger(merged.rngState)) merged.rngState = merged.seed;
         if (!Array.isArray(merged.dailyEventOrder) || !merged.dailyEventOrder.length) merged.dailyEventOrder = seededShuffle(LOCAL_EVENTS.map(e => e.title), merged.seed);
@@ -1212,6 +1484,15 @@ function unlockAchievements(s) {
   }
   if (newly.length) saveAchievementMeta(meta);
   return newly;
+}
+function unlockSpecialAchievement(s, id) {
+  const achievement = ACHIEVEMENTS.find(a => a.id === id);
+  const meta = getAchievementMeta();
+  if (!achievement || !achievement.hidden || meta.unlocked.includes(id) || !achievement.test(s)) return false;
+  meta.unlocked.push(id);
+  for (const [k, v] of Object.entries(achievement.bonus || {})) meta.bonuses[k] = (meta.bonuses[k] || 0) + v;
+  saveAchievementMeta(meta);
+  return true;
 }
 function saveBook(b) { try { localStorage.setItem(BOOK_KEY, JSON.stringify(b)); } catch (e) { /* 忽略 */ } }
 function getKey() { try { return (localStorage.getItem(API_KEY_STORE) || '').trim(); } catch (e) { return ''; } }
@@ -1426,10 +1707,39 @@ function adjustRelationships(s, deltas) {
 }
 function renderRelationships() {
   const rel = state.relationships || { teacher: 0, truffle: 0 };
-  $('relationships').innerHTML = Object.entries(RELATION_NAMES).map(([key, name]) => {
+  const rows = Object.entries(RELATION_NAMES).map(([key, name]) => {
     const value = clamp(Number(rel[key]) || 0, 0, 100);
-    return `<div class="relrow"><span>${key === 'teacher' ? '🐮' : '🍄'} ${name}</span><span>${value} / 100</span></div><div class="relbar"><div class="relfill" style="width:${value}%"></div></div>`;
+    const progress = clamp(Math.floor(Number(state.npcQuestProgress && state.npcQuestProgress[key]) || 0), 0, NPC_QUESTLINES[key].length);
+    const quests = NPC_QUESTLINES[key];
+    const next = quests[progress];
+    const questText = !next ? `📜 任務線完成 ${progress} / ${quests.length}` : value >= next.unlock
+      ? `📜 好感任務 ${progress + 1} / ${quests.length}｜下次突發事件登場`
+      : `📜 好感任務 ${progress + 1} / ${quests.length}｜解鎖需 ${next.unlock}（還差 ${next.unlock - value}）`;
+    return `<div class="relrow"><span>${RELATION_EMOJI[key]} ${name}</span><span>${value} / 100</span></div><div class="relbar"><div class="relfill" style="width:${value}%"></div></div><div class="quest-status">${state.mode === 'daily' ? '📅 每日挑戰不含 NPC 好感任務' : questText}</div>`;
   }).join('');
+  const dream = getDream(state);
+  let dreamHtml = '<div class="dream-track">🌱 舊存檔尚未選擇夢想專精；下次開始新局時可選擇。</div>';
+  if (state.mode === 'daily') dreamHtml = '<div class="dream-track">📅 每日挑戰不套用夢想專精，維持固定條件。</div>';
+  else if (dream) {
+    const level = clamp(Number(state.dreamMilestones) || 0, 0, dream.milestones.length);
+    const target = dream.milestones[level] || dream.milestones[dream.milestones.length - 1];
+    const value = Number(state[dream.focus]) || 0;
+    const previous = level > 0 ? dream.milestones[level - 1] : 10;
+    const pct = level >= dream.milestones.length ? 100 : clamp((value - previous) / Math.max(1, target - previous) * 100, 0, 100);
+    dreamHtml = `<div class="dream-track"><b>${dream.emoji} ${dream.name}｜${dream.focusName}專精成長 +12%</b><div>${level >= dream.milestones.length ? '夢想里程碑全數完成！' : `進度 ${level} / ${dream.milestones.length}｜${dream.focusName} ${value} / ${target}`}</div><div class="dream-bar"><div class="dream-fill" style="width:${pct}%"></div></div><div class="dream-steps">${dream.milestones.map((n, i) => `${i < level ? '✓' : '○'} ${n}（達成 +2 ${dream.focusName}）`).join('　')}</div></div>`;
+  }
+  const cup = state.ranchCompetition;
+  let competitionHtml = '';
+  if (state.mode === 'daily') competitionHtml = '<div class="dream-track">📅 每日挑戰不含牧場競賽。</div>';
+  else if (cup) {
+    const completed = cup.round >= RANCH_COMPETITION.schedule.length;
+    const score = `${cup.wins} 勝・${cup.ties} 平・${cup.losses} 敗${cup.missed ? `・${cup.missed} 場尚未加入` : ''}`;
+    const next = completed ? '本季四場賽事已結束' : `第 ${cup.round + 1} / 4 場｜預定第 ${RANCH_COMPETITION.schedule[cup.round]} 天`;
+    const awards = cup.awards.includes('champion') ? '👑 牧場總冠軍' : cup.awards.includes('silver') ? '🏆 銀蹄獎盃' : '尚未獲得獎盃';
+    const lore = `<details class="dream-track rival-lore"><summary>🐷 認識宿敵 ${esc(RIVAL_PROFILE.name)}</summary><p>${esc(RIVAL_PROFILE.backstory)}</p><p><b>個性：</b>${esc(RIVAL_PROFILE.personality)}</p><p><b>珍藏：</b>${esc(RIVAL_PROFILE.keepsake)}</p><blockquote>「${esc(RIVAL_PROFILE.motto)}」</blockquote></details>`;
+    competitionHtml = `<div class="dream-track"><b>🏆 牧場競賽｜宿敵豬 ${RANCH_COMPETITION.rival}</b><div>${next}</div><div>目前戰績：${score}｜${RANCH_COMPETITION.rival}敬意 ${cup.respect} / 100</div><div>${awards}</div></div>${lore}`;
+  }
+  $('relationships').innerHTML = rows + dreamHtml + competitionHtml;
   $('modeBadge').textContent = state.mode === 'daily' ? `📅 每日挑戰 ${state.challengeDate || ''} UTC` : '🌱 一般養成';
   const seasonBadge = $('seasonBadge'), season = getSeasonalEvent(utcToday());
   if (seasonBadge) {
@@ -1576,6 +1886,7 @@ function showShop() {
       const item = SHOP_ITEMS.find(x => x.id === b.dataset.shopUse);
       if (!item || state.ended || state.pendingEvent || !(state.inventory[item.id] > 0)) return;
       const real = applyDelta(state, item.effects);
+      for (const reward of checkDreamMilestones(state)) { real[reward.focus] = (real[reward.focus] || 0) + reward.bonus; addLog(`✨ ${getDream(state).name}里程碑 ${reward.level} / 3 達成！${getDream(state).focusName} +${reward.bonus}`, 'ev'); }
       state.inventory[item.id]--; save(); renderAll(); flash(real); toast(`使用了 ${item.name}`);
       m.body.innerHTML = shopMarkup(); bind();
     }));
@@ -1722,6 +2033,7 @@ async function onAction(id) {
     catch (e) { setBusy(false); toast('小遊戲暫時無法開始，請再試一次'); return; }
   }
   const { real, weak, lowMood } = runAction(state, a, miniResult ? miniResult.multiplier : 1);
+  for (const reward of checkDreamMilestones(state)) { real[reward.focus] = (real[reward.focus] || 0) + reward.bonus; addLog(`✨ ${getDream(state).name}里程碑 ${reward.level} / 3 達成！${reward.bonus ? `${getDream(state).focusName} +${reward.bonus}` : ''}`, 'ev'); }
   adjustRelationships(state, ACTION_RELATIONS[id]);
   if (wasSick) state.sickDays = Math.max(0, state.sickDays - 1);
   state.noSleepStreak = id === 'sleep' ? 0 : (state.noSleepStreak || 0) + 1;
@@ -1827,12 +2139,17 @@ async function getEvent(trig) {
     ev.source = 'local';
     return ev;
   }
+  if (trig && trig.competition) return getRanchCompetitionEvent(state);
+  const questEvent = getNpcQuestEvent(state);
+  if (questEvent) return questEvent;
   const season = getSeasonalEvent(utcToday());
   if (season && SEASONAL_EVENTS.some(e => e.seasonId === season.id && !state.eventTitles.includes(e.title))) {
     const ev = pickLocalEvent(state, null);
     ev.source = 'local';
     return ev;
   }
+  const dreamEvent = getDreamSpecializationEvent(state);
+  if (dreamEvent) return dreamEvent;
   if (getKey()) {
     try {
       const prompt = `你是《豬豬夢工場》的劇情產生器，這是一款溫馨又搞笑的小豬養成遊戲。
@@ -1889,17 +2206,28 @@ async function runEvent(trig) {
 function presentEvent(ev) {
   return new Promise(resolve => {
     feedback('event');
-    const tag = ev.source === 'ai' ? '<span class="tag-ai">✨ Gemini</span>' : '<span class="tag-local tag-ai">內建</span>';
+    const tag = ev.source === 'quest' ? '<span class="tag-ai tag-quest">📜 好感任務</span>' : (ev.source === 'competition' ? '<span class="tag-ai tag-quest">🏆 牧場競賽</span>' : (ev.source === 'ai' ? '<span class="tag-ai">✨ Gemini</span>' : '<span class="tag-local tag-ai">內建</span>'));
     const m = showModal({
       title: `${esc(ev.title)}${tag}`,
       html: `<div class="big">${esc(ev.emoji)}</div><p>${esc(ev.story)}</p>${ev.source === 'local' && !getKey() ? '<p class="small">💡 在「⚙️ 設定」填入 Gemini API Key，就能解鎖每局都不同的 AI 事件。</p>' : ''}`,
       buttons: ev.choices.map((c, i) => ({
-        text: `${i === 0 ? '🅰️' : '🅱️'} ${esc(c.text)}`,
+        text: `${['🅰️', '🅱️', '🅲️'][i] || '▪️'} ${esc(c.text)}`,
         onClick: () => {
-          if (c.requires && (Number(state.relationships && state.relationships[c.requires.npc]) || 0) < c.requires.min) { toast(`${RELATION_NAMES[c.requires.npc] || 'NPC'} 好感度需達 ${c.requires.min} 才能選這個選項`); return; }
+          if (c.requires && c.requires.npc && (Number(state.relationships && state.relationships[c.requires.npc]) || 0) < c.requires.min) { toast(`${RELATION_NAMES[c.requires.npc] || 'NPC'} 好感度需達 ${c.requires.min} 才能選這個選項`); return; }
+          if (c.requires && c.requires.dream && state.dreamId !== c.requires.dream) { const lockedDream = DREAM_SPECIALIZATIONS.find(d => d.id === c.requires.dream); toast(`這是「${lockedDream ? lockedDream.name : '指定'}」專精限定選項`); return; }
+          const competitionResult = ev.competition ? resolveRanchCompetition(state, ev, c) : null;
+          const chosenEffects = competitionResult ? competitionResult.effects : c.effects;
+          const chosenResult = competitionResult ? competitionResult.result : c.result;
           const before = { int: state.int, str: state.str, cha: state.cha };
-          const real = applyDelta(state, PigPersonalities.scaleEventEffects(getPersonality(state), c.effects));
+          const real = applyDelta(state, PigPersonalities.scaleEventEffects(getPersonality(state), chosenEffects));
           adjustRelationships(state, c.relationship);
+          if (ev.quest && NPC_QUESTLINES[ev.quest.npc]) {
+            state.npcQuestProgress = state.npcQuestProgress || { teacher: 0, truffle: 0 };
+            state.npcQuestProgress[ev.quest.npc] = Math.max(Number(state.npcQuestProgress[ev.quest.npc]) || 0, ev.quest.chapter);
+            addLog(`📜 ${RELATION_EMOJI[ev.quest.npc]} ${RELATION_NAMES[ev.quest.npc]}任務進度 ${state.npcQuestProgress[ev.quest.npc]} / ${NPC_QUESTLINES[ev.quest.npc].length}`, 'ev');
+          }
+          const dreamRewards = checkDreamMilestones(state);
+          for (const reward of dreamRewards) { real[reward.focus] = (real[reward.focus] || 0) + reward.bonus; addLog(`✨ ${getDream(state).name}里程碑 ${reward.level} / 3 達成！${reward.bonus ? `${reward.focus === 'int' ? '智慧' : reward.focus === 'str' ? '力量' : '魅力'} +${reward.bonus}` : ''}`, 'ev'); }
           if (state.stamina < 1) { real.stamina = (real.stamina || 0) + (1 - state.stamina); state.stamina = 1; }
           state.eventTitles.push(ev.title);
           if (state.eventTitles.length > 40) state.eventTitles.shift();
@@ -1910,7 +2238,7 @@ function presentEvent(ev) {
           if (ev.source === 'ai') state.aiEvents++;
           addLog(`${ev.emoji} 【${ev.title}】${c.text}`, 'ev');
           save(); renderAll(); flash(real);
-          m.body.innerHTML = `<div class="big">${esc(ev.emoji)}</div><p><b>你選擇了：</b>${esc(c.text)}</p><p>${esc(c.result)}</p><div class="sumrow">${chipsHtml(real) || '<span>沒有數值變化</span>'}</div>`;
+          m.body.innerHTML = `<div class="big">${esc(ev.emoji)}</div><p><b>你選擇了：</b>${esc(c.text)}</p><p>${esc(chosenResult)}</p><div class="sumrow">${chipsHtml(real) || '<span>沒有數值變化</span>'}</div>`;
           m.bar.innerHTML = '';
           const ok = document.createElement('button');
           ok.className = 'mbtn center primary'; ok.textContent = '繼續冒險 ▶';
@@ -2032,6 +2360,8 @@ async function showEnding() {
   const currentLegacy = LEGACY_TRAITS.find(t => t.id === s.legacyTrait);
   const lrank = s.runId ? localRankOf(s.runId) : null;
   const up = s.uploaded;
+  const dreamEpilogue = getDreamEpilogue(s);
+  const rivalSecretEpilogue = getRivalSecretEpilogue(s);
   closeModal();
 
   const buttons = [];
@@ -2062,6 +2392,8 @@ async function showEnding() {
       <div class="sumrow"><span>📘 智慧 ${s.int}</span><span>💪 力量 ${s.str}</span><span>💖 魅力 ${s.cha}</span><span>⚖️ ${s.weight}kg</span><span>🪙 ${s.gold}G</span><span>🎭 ${esc(getPersonality(s).name)}</span></div>
       <div class="scorebox">🏆 綜合分數 <b>${sc.total}</b>
         <small>能力 ${sc.base} ＋ 豬豬幣 ${sc.goldPts} ＋ 結局稀有度 ${sc.endPts}${lrank ? `｜本機第 ${lrank} 名` : ''}${up ? (s.mode === 'daily' ? `｜每日第 ${up.dailyRank} 名｜總榜第 ${up.rank} 名` : `｜線上第 ${up.rank} 名`) : ''}</small></div>
+      ${dreamEpilogue ? renderDreamEpilogue(dreamEpilogue) : ''}
+      ${rivalSecretEpilogue ? renderRivalSecretEpilogue(rivalSecretEpilogue) : ''}
       <div class="news">
         <div class="mast">豬豬日報</div>
         <div class="meta"><span>豬曆第 30 天</span><span>${n.source === 'ai' ? '✨ Gemini 特約記者' : '本報編輯部'}</span><span>頭版</span></div>
@@ -2120,6 +2452,7 @@ function showLeaderboard(fromEnding = false, tab) {
 }
 
 function achievementProgress(a, s) {
+  if (a.hidden) return '尚未發現';
   if (a.id === 'no_sleep_5') return `本局最佳 ${Math.min(5, s.bestNoSleepStreak || 0)} / 5 天`;
   if (a.id === 'no_hospital') return s.hospitalCount ? `已住院 ${s.hospitalCount} 次` : '目前保持零住院';
   if (a.id === 'weight_30') return `目前體重 ${s.weight}kg，通關時需剛好 30kg`;
@@ -2133,6 +2466,7 @@ function showAchievements(fromEnding = false) {
   const meta = getAchievementMeta();
   const cards = ACHIEVEMENTS.map(a => {
     const got = meta.unlocked.includes(a.id);
+    if (a.hidden && !got) return '<div class="bcard locked"><div class="e">❔</div><div class="t">???</div><div>尚未發現的秘密成就</div><div class="small">條件未知</div><div class="stars">永久加成：？？？</div></div>';
     const bonusText = Object.entries(a.bonus).map(([k, v]) => `${LABEL[k]} +${v}`).join('、');
     return `<div class="bcard ${got ? '' : 'locked'}"><div class="e">${got ? a.emoji : '🔒'}</div><div class="t">${esc(a.title)}</div><div>${esc(a.desc)}</div><div class="small">${got ? '✅ 已解鎖' : esc(achievementProgress(a, state))}</div><div class="stars">永久加成：${esc(bonusText)}</div></div>`;
   }).join('');
@@ -2216,13 +2550,30 @@ function pickPersonality({ current = null, allowCancel = false, firstRun = false
     m.body.querySelectorAll('[data-pers]').forEach(b => b.addEventListener('click', () => { selected = b.dataset.pers; refresh(); }));
   });
 }
+function dreamDetailHtml(dream) {
+  if (!dream) return '';
+  return `<b>${dream.emoji} ${esc(dream.name)}</b>${esc(dream.tagline)}<br>行動成長：${esc(dream.focusName)}專精 +12%。<br>里程碑：${dream.milestones.join('、')} 點各獲得 +2 ${esc(dream.focusName)}；三階全部完成，夢想圓滿。`;
+}
+function pickDreamSpecialization({ current = null, allowCancel = false } = {}) {
+  return new Promise(resolve => {
+    let selected = DREAM_SPECIALIZATIONS.some(d => d.id === current) ? current : DREAM_SPECIALIZATIONS[0].id;
+    const card = d => `<button type="button" class="pers-card dream-card ${d.id === selected ? 'on' : ''}" data-dream="${d.id}" aria-pressed="${d.id === selected}"><span class="e">${d.emoji}</span><span class="t">${esc(d.name)}</span><span class="tag">${esc(d.tagline)}</span><span class="pro">＋ ${esc(d.focusName)}行動成長 12%</span><span class="collected">里程碑：${d.milestones.join(' → ')}，每階 +2</span></button>`;
+    const m = showModal({ wide: true, row: true, title: '✨ 選擇這一生的夢想', html: `<p class="small">夢想專精是本局的養成方向，與豬豬個性分開計算。達成專屬能力里程碑會獲得額外成長，也會解鎖專屬任務選項。</p><div class="pers-grid" id="dreamGrid">${DREAM_SPECIALIZATIONS.map(card).join('')}</div><div class="pers-detail" id="dreamDetail">${dreamDetailHtml(DREAM_SPECIALIZATIONS.find(d => d.id === selected))}</div>`, buttons: [ ...(allowCancel ? [{ text: '取消', cls: 'center', onClick: () => { closeModal(); resolve(null); } }] : []), { text: '🎲 隨機選', cls: 'center', onClick: () => { selected = pick(DREAM_SPECIALIZATIONS.filter(d => d.id !== selected)).id; refresh(); } }, { text: '選擇這個夢想，開始！', cls: 'center primary', onClick: () => { closeModal(); resolve(selected); } } ] });
+    const refresh = () => {
+      m.body.querySelectorAll('[data-dream]').forEach(b => { const on = b.dataset.dream === selected; b.classList.toggle('on', on); b.setAttribute('aria-pressed', String(on)); });
+      m.body.querySelector('#dreamDetail').innerHTML = dreamDetailHtml(DREAM_SPECIALIZATIONS.find(d => d.id === selected));
+    };
+    m.body.querySelectorAll('[data-dream]').forEach(b => b.addEventListener('click', () => { selected = b.dataset.dream; refresh(); }));
+  });
+}
 function showPersonalityInfo() {
   const p = getPersonality(state);
+  const dream = getDream(state);
   const daily = state && state.mode === 'daily';
   showModal({
     title: '🎭 豬豬個性', dismiss: true,
     html: `<div class="big">${p.emoji}</div><div class="pers-detail">${personalityDetailHtml(p)}</div>
-      ${daily ? '<p class="small">📅 每日挑戰固定使用「標準豬豬」，所有玩家在同一組種子下競爭，因此不套用個性加成。</p>' : '<p class="small">想換個性嗎？按「🔄 重來」重新選擇，結局圖鑑與成就都會保留。</p>'}`,
+      ${daily ? '<p class="small">📅 每日挑戰固定使用「標準豬豬」，所有玩家在同一組種子下競爭，因此不套用個性或夢想專精加成。</p>' : `<p class="small">想換個性或夢想嗎？按「🔄 重來」重新選擇，結局圖鑑與成就都會保留。</p>${dream ? `<div class="pers-detail">${dreamDetailHtml(dream)}</div>` : ''}`}`,
     buttons: [{ text: '關閉', cls: 'center primary', onClick: closeModal }],
   });
 }
@@ -2253,8 +2604,10 @@ async function retirePig() {
   if (!traitId) return;
   const personality = await pickPersonality({ current: state.personality, allowCancel: true });
   if (!personality) return;
+  const dreamId = await pickDreamSpecialization({ current: state.dreamId, allowCancel: true });
+  if (!dreamId) return;
   recordLegacyTrait(traitId);
-  state = newState({ personality, legacyTrait: traitId });
+  state = newState({ personality, dreamId, legacyTrait: traitId });
   save(); setBusy(false); closeModal(); renderAll(); say('新的世代，帶著祖先的祝福出發！'); showIntro('normal');
 }
 
@@ -2342,7 +2695,9 @@ async function startNormal() {
   }
   const id = await pickPersonality({ firstRun: true });
   if (!id) return;
-  state = newState({ personality: id });
+  const dreamId = await pickDreamSpecialization();
+  if (!dreamId) return;
+  state = newState({ personality: id, dreamId });
   save(); closeModal(); renderAll();
   say(`${getPersonality(state).name}的豬生，開始！`);
   showIntro('normal');
@@ -2350,6 +2705,7 @@ async function startNormal() {
 function showIntro(mode = (state && state.mode) || 'normal') {
   const daily = mode === 'daily';
   const p = getPersonality(state);
+  const dream = getDream(state);
   const legacy = LEGACY_TRAITS.find(t => t.id === state.legacyTrait);
   const season = getSeasonalEvent(utcToday());
   showModal({
@@ -2357,11 +2713,12 @@ function showIntro(mode = (state && state.mode) || 'normal') {
     html: `<div class="big">🌾🐖🌾</div>
       <p>你有 <b>30 天</b>，要把這隻普通的小粉豬養成<b>獨當一面的傳奇豬豬</b>！</p>
       <p>每天選 <b>1 個行動</b>：讀書、健身、練儀態、大吃大喝、打工，或睡覺回血。體力歸零會昏倒住院，記得量力而為。</p>
-      <p>途中會遇到<b>突發事件</b>，你的選擇會影響數值。第 30 天結束後，依最終數值解鎖專屬結局與報紙頭條！</p>
-      ${daily ? '' : `<p class="scorebox">${p.emoji} 本局個性：${esc(p.name)}<small>${esc(p.tagline)}｜${esc(p.pros.join('、'))}</small></p>`}
-      <p class="small">🏆 一共有 ${ENDINGS.length} 種結局等你收集。內建事件共 ${LOCAL_EVENTS.length} 則${season ? `，目前還有 ${season.emoji}${season.name}限定事件` : ''}；每天的天氣可能改變行程選擇與收益。</p>
+      <p>途中會遇到<b>突發事件與 NPC 好感任務</b>，你的選擇會影響數值和角色關係。第 30 天結束後，依最終數值解鎖專屬結局與報紙頭條！</p>
+      ${daily ? '' : '<p class="scorebox">🏆 牧場競賽：第 7、14、21、28 天與宿敵豬元元較量，可選智慧解謎、力量障礙或魅力舞台。每場都能用不同方式回應她；兩勝得銀蹄獎盃，四戰全勝成為總冠軍。</p>'}
+      ${daily ? '' : `<p class="scorebox">${p.emoji} 本局個性：${esc(p.name)}<small>${esc(p.tagline)}｜${esc(p.pros.join('、'))}</small></p>${dream ? `<p class="scorebox">${dream.emoji} 本局夢想：${esc(dream.name)}<small>${esc(dream.focusName)}專精行動成長 +12%；達 ${dream.milestones.join('／')} 點各有里程碑獎勵。</small></p>` : ''}`}
+      <p class="small">🏆 一共有 ${ENDINGS.length} 種結局等你收集。一般內建事件共 ${LOCAL_EVENTS.length} 則，另有夢想專屬事件與四場牧場競賽${season ? `，目前還有 ${season.emoji}${season.name}限定事件` : ''}；每天的天氣可能改變行程選擇與收益。</p>
       ${legacy && !daily ? `<p class="scorebox">🧬 世代傳承：${legacy.emoji} ${esc(legacy.name)}<small>${esc(legacy.desc)}</small></p>` : ''}
-      ${daily ? `<p class="scorebox">🌍 ${state.challengeDate} UTC 固定挑戰<small>每日種子、天氣、能力成長與事件順序固定；不套用永久成就加成，個性固定為「標準豬豬」。事件固定使用內建內容，不受玩家 API Key 影響。</small></p>` : `<p class="small">🏅 永久加成：智慧 +${getAchievementMeta().bonuses.int}、力量 +${getAchievementMeta().bonuses.str}、魅力 +${getAchievementMeta().bonuses.cha}。解鎖成就後，下一局就能帶著加成出發！</p>`}`,
+      ${daily ? `<p class="scorebox">🌍 ${state.challengeDate} UTC 固定挑戰<small>每日種子、天氣、能力成長與事件順序固定；不套用永久成就加成，個性固定為「標準豬豬」、不套用夢想專精或 NPC 任務。事件固定使用內建內容，不受玩家 API Key 影響。</small></p>` : `<p class="small">🏅 永久加成：智慧 +${getAchievementMeta().bonuses.int}、力量 +${getAchievementMeta().bonuses.str}、魅力 +${getAchievementMeta().bonuses.cha}。解鎖成就後，下一局就能帶著加成出發！</p>`}`,
     buttons: [{ text: daily ? '開始今日挑戰 ▶' : '開始一般養成 ▶', cls: 'center primary', onClick: () => { closeModal(); say(daily ? '固定事件順序已鎖定，開始每日挑戰！' : '今天要做什麼呢？'); } }, { text: daily ? '🌱 切回一般養成' : '📅 改玩每日挑戰', cls: 'center', onClick: () => daily ? startNormalChallenge() : startDailyChallenge() }],
   });
 }
@@ -2376,7 +2733,9 @@ async function restart() {
   } else {
     const id = await pickPersonality({ current: state.personality, allowCancel: true });
     if (!id) return;
-    state = newState({ personality: id });
+    const dreamId = await pickDreamSpecialization({ current: state.dreamId, allowCancel: true });
+    if (!dreamId) return;
+    state = newState({ personality: id, dreamId });
   }
   save(); setBusy(false); closeModal(); renderAll(); say('新的豬生，開始囉！'); showIntro(state.mode);
 }
@@ -2387,13 +2746,15 @@ async function init() {
   buildStats();
   if (!state) {
     const id = await pickPersonality({ firstRun: true });
-    state = newState({ personality: id || DEFAULT_PERSONALITY });
+    const dreamId = await pickDreamSpecialization();
+    state = newState({ personality: id || DEFAULT_PERSONALITY, dreamId });
     save();
   } else if (!PigPersonalities.has(state.personality)) {
     // 舊版存檔：第 1 天還沒動作就讓玩家選；進行中的局則套用預設值，避免中途改變平衡
     if (state.mode !== 'daily' && !state.ended && state.day === 1 && state.log.length === 0) {
       const id = await pickPersonality({ firstRun: true });
-      state = newState({ personality: id || DEFAULT_PERSONALITY });
+      const dreamId = await pickDreamSpecialization();
+      state = newState({ personality: id || DEFAULT_PERSONALITY, dreamId });
       save();
     } else {
       state.personality = DEFAULT_PERSONALITY;

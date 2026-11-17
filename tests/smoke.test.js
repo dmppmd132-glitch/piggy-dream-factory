@@ -34,7 +34,11 @@ const click = el => el.dispatchEvent(new el.ownerDocument.defaultView.MouseEvent
   await waitFor(() => doc.querySelectorAll('.pers-card').length, '個性選擇');
   click(doc.querySelector('[data-pers="balanced"]'));
   click([...doc.querySelectorAll('.mbtn')].find(b => b.textContent.includes('就這隻')));
+  await waitFor(() => doc.querySelector('[data-dream="star"]'), '夢想專精選擇');
+  click(doc.querySelector('[data-dream="star"]'));
+  click([...doc.querySelectorAll('.mbtn')].find(b => b.textContent.includes('選擇這個夢想')));
   await waitFor(() => window.eval('state'), '新局');
+  assert.strictEqual(window.eval('state.dreamId'), 'star', '開局應套用明星夢想');
   click([...doc.querySelectorAll('.mbtn')].find(b => b.textContent.includes('開始一般養成')));
 
   // 跳到第 28 天，關掉事件，避免測試等太久
