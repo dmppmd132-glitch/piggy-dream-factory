@@ -1,0 +1,7 @@
+# 僅供 Preview D1 migration 使用；database_id 必須與 wrangler.toml 的
+# previews.d1_databases.database_id 完全一致，禁止填入 production D1 ID。
+[[d1_databases]]
+binding = "PREVIEW_DB"
+database_name = "piggy-leaderboard-preview"
+database_id = "48fc57ae-a90c-4d36-8bb7-ead3b97da9ba"
+migrations_dir = "migrations"

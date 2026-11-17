@@ -2,14 +2,23 @@
 name = "piggy-dream-factory-leaderboard"
 main = "src/index.js"
 compatibility_date = "2025-01-01"
-migrations_dir = "migrations"
 
 [vars]
-# 允許呼叫排行榜的網頁來源（填你的 GitHub Pages 網址，不含路徑），多個用逗號分隔
-# 例如："https://dmppmd132-glitch.github.io"
+# Production：允許呼叫排行榜的網頁來源（逗號分隔，不含路徑）
 ALLOWED_ORIGINS = "https://dmppmd132-glitch.github.io,http://localhost:8080"
 
 [[d1_databases]]
 binding = "DB"
 database_name = "piggy-leaderboard"
 database_id = "9222e7d3-ad92-4547-a259-56160da501b2"
+migrations_dir = "migrations"
+
+# Worker Preview 使用獨立設定，不會繼承 production 的變數與資源綁定。
+# 此資料庫僅供 Preview 使用；勿改成 production D1 ID。
+[previews.vars]
+ALLOWED_ORIGINS = "https://dmppmd132-glitch.github.io,http://localhost:8080"
+
+[[previews.d1_databases]]
+binding = "DB"
+database_name = "piggy-leaderboard-preview"
+database_id = "48fc57ae-a90c-4d36-8bb7-ead3b97da9ba"
